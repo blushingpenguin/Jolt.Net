@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,7 +37,7 @@ namespace Jolt.Net
         private CardinalityRelationship _cardinalityRelationship;
 
         public CardinalityLeafSpec(string rawKey, object rhs) :
-                base(rawKey)
+            base(rawKey)
         {
             string s = rhs.ToString();
             if (!Enum.TryParse<CardinalityRelationship>(s, out _cardinalityRelationship))
@@ -50,14 +51,14 @@ namespace Jolt.Net
          *
          * @return true if this this spec "handles" the inputkey such that no sibling specs need to see it
          */
-        public override bool ApplyCardinality(string inputKey, object input, WalkedPath walkedPath, object parentContainer)
+        public override bool ApplyCardinality(string inputKey, JToken input, WalkedPath walkedPath, JToken parentContainer)
         {
-
             MatchedElement thisLevel = GetMatch(inputKey, walkedPath);
-            if (thisLevel == null) {
+            if (thisLevel == null)
+            {
                 return false;
             }
-            PerformCardinalityAdjustment(inputKey, input, walkedPath, (Dictionary<string, object>)parentContainer, thisLevel);
+            PerformCardinalityAdjustment(inputKey, input, walkedPath, (JObject) parentContainer, thisLevel);
             return true;
         }
 
@@ -66,60 +67,60 @@ namespace Jolt.Net
          *
          * @return null if no work was done, otherwise returns the re-parented data
          */
-        public object ApplyToParentContainer(string inputKey, object input, WalkedPath walkedPath, object parentContainer)
+        public JToken ApplyToParentContainer(string inputKey, JToken input, WalkedPath walkedPath, JToken parentContainer)
         {
             MatchedElement thisLevel = GetMatch(inputKey, walkedPath);
             if (thisLevel == null)
             {
                 return null;
             }
-            return PerformCardinalityAdjustment(inputKey, input, walkedPath, (Dictionary<string, object>)parentContainer, thisLevel);
+            return PerformCardinalityAdjustment(inputKey, input, walkedPath, (JObject) parentContainer, thisLevel);
         }
 
         /**
          *
          * @return null if no work was done, otherwise returns the re-parented data
          */
-        private object PerformCardinalityAdjustment(string inputKey, object input, WalkedPath walkedPath, Dictionary<string, object> parentContainer, MatchedElement thisLevel)
+        private JToken PerformCardinalityAdjustment(string inputKey, JToken input, WalkedPath walkedPath, JObject parentContainer, MatchedElement thisLevel)
         {
             // Add our the LiteralPathElement for this level, so that write path References can use it as &(0,0)
             walkedPath.Add(input, thisLevel);
 
-            object returnValue = null;
+            JToken returnValue = null;
             if (_cardinalityRelationship == CardinalityRelationship.MANY)
             {
-                if (input is List<object>) {
+                if (input is JArray)
+                {
                     returnValue = input;
                 }
-                else if (input is object[] arr) {
-                    returnValue = arr.ToList();
-                }
-                else if (input is Dictionary<string, object> || input is string || input is int || input is bool)
+                else if (input.Type == JTokenType.Object || input.Type == JTokenType.String || 
+                         input.Type == JTokenType.Integer || input.Type == JTokenType.Float || 
+                         input.Type == JTokenType.Boolean)
                 {
-                    object one = parentContainer.Remove(inputKey);
-                    var tempList = new List<object>();
+                    var one = parentContainer[inputKey];
+                    parentContainer.Remove(inputKey);
+                    var tempList = new JArray();
                     tempList.Add(one);
                     returnValue = tempList;
                 }
-                else if (input == null)
+                else if (input.Type == JTokenType.Null)
                 {
-                    returnValue = new List<object>();
+                    returnValue = new JArray();
                 }
                 parentContainer[inputKey] = returnValue;
             }
             else if (_cardinalityRelationship == CardinalityRelationship.ONE)
             {
-                if (input is List<object> l)
+                if (input is JArray l)
                 {
+                    // The value is first removed from the array in order to prevent it
+                    // from being cloned (JContainers clone their inputs if they are already
+                    // part of an object graph)
                     if (l.Count > 0)
                     {
                         returnValue = l[0];
+                        l.RemoveAt(0);
                     }
-                    parentContainer[inputKey] = returnValue;
-                }
-                else if (input is object[] arr) 
-                {
-                    returnValue = arr[0];
                     parentContainer[inputKey] = returnValue;
                 }
             }

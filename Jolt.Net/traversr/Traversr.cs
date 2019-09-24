@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
 namespace Jolt.Net
@@ -68,7 +69,7 @@ namespace Jolt.Net
                 intermediatePath = intermediatePath.Substring(1);
             }
 
-            string[] paths = intermediatePath.Split(new[] { "\\." }, System.StringSplitOptions.None);
+            string[] paths = intermediatePath.Split('.');
 
             ITraversalStep rooty = null;
             for (int index = paths.Length - 1; index >= 0; index--)
@@ -115,9 +116,10 @@ namespace Jolt.Net
          *  for the traversal.  This is determined by the behavior of the implementations of the
          *  abstract methods of this class.
          */
-        public OptionalObject Get(object tree, List<string> keys)
+        public JToken Get(JToken tree, List<string> keys)
         {
-            if (keys.Count != _traversaLength) {
+            if (keys.Count != _traversaLength)
+            {
                 throw new TraversrException("Traversal Path and number of keys mismatch, _traversaLength:" + _traversaLength + " numKeys:" + keys.Count);
             }
 
@@ -129,9 +131,10 @@ namespace Jolt.Net
          * @param data JSON style data object you want to set
          * @return returns the data object if successfully set, otherwise null if there was a problem walking the path
          */
-        public OptionalObject Set(object tree, List<string> keys, object data)
+        public JToken Set(JToken tree, List<string> keys, JToken data)
         {
-            if (keys.Count != _traversaLength) {
+            if (keys.Count != _traversaLength)
+            {
                 throw new TraversrException("Traversal Path and number of keys mismatch, _traversaLength:" + _traversaLength + " numKeys:" + keys.Count);
             }
 
@@ -142,8 +145,9 @@ namespace Jolt.Net
                The problem is that, we have no way to return our newly created top level container.
                All we return is a reference to the data, if we were successful in our set.
             */
-            if (tree == null) {
-                return new OptionalObject();
+            if (tree == null)
+            {
+                return null;
             }
 
             return _root.Traverse(tree, TraversalStepOperation.SET, keys.GetEnumerator(), data);
@@ -154,7 +158,7 @@ namespace Jolt.Net
          *  for the traversal.  This is determined by the behavior of the implementations of the
          *  abstract methods of this class.
          */
-        public OptionalObject Remove(object tree, List<string> keys)
+        public JToken Remove(JToken tree, List<string> keys)
         {
             if (keys.Count != _traversaLength)
             {
@@ -163,7 +167,7 @@ namespace Jolt.Net
 
             if (tree == null)
             {
-                return new OptionalObject();
+                return null;
             }
 
             return _root.Traverse(tree, TraversalStepOperation.REMOVE, keys.GetEnumerator(), null);
@@ -180,7 +184,7 @@ namespace Jolt.Net
          *
          * @return the data object if the set was successful, or null if not
          */
-        public abstract OptionalObject HandleFinalSet(ITraversalStep traversalStep, object tree, string key, object data);
+        public abstract JToken HandleFinalSet(ITraversalStep traversalStep, JToken tree, string key, JToken data);
 
         /**
          * Allow subclasses to control how gets are handled for intermediate traversals.
@@ -191,6 +195,6 @@ namespace Jolt.Net
          *
          * Overwrite or just return?
          */
-        public abstract OptionalObject HandleIntermediateGet(ITraversalStep traversalStep, object tree, string key, TraversalStepOperation op);
+        public abstract JToken HandleIntermediateGet(ITraversalStep traversalStep, JToken tree, string key, TraversalStepOperation op);
     }
 }

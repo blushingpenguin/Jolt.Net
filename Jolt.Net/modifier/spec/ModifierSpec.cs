@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -77,7 +78,7 @@ namespace Jolt.Net
 
         public IMatchablePathElement GetPathElement() => _pathElement;
 
-        public bool Apply(string inputKey, OptionalObject inputOptional, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context)
+        public bool Apply(string inputKey, JToken inputOptional, WalkedPath walkedPath, JObject output, JObject context)
         {
             if (output != null)
             {
@@ -85,7 +86,8 @@ namespace Jolt.Net
             }
 
             MatchedElement thisLevel = _pathElement.Match(inputKey, walkedPath);
-            if (thisLevel == null) {
+            if (thisLevel == null)
+            {
                 return false;
             }
 
@@ -93,7 +95,7 @@ namespace Jolt.Net
             {
                 ApplyElement(inputKey, inputOptional, thisLevel, walkedPath, context);
             }
-            else if (inputOptional.HasValue)
+            else if (inputOptional != null)
             {
                 ApplyElement(inputKey, inputOptional, thisLevel, walkedPath, context);
             }
@@ -104,7 +106,7 @@ namespace Jolt.Net
          * Templatr specific override that is used in BaseSpec#apply(...)
          * The name is changed for easy identification during debugging
          */
-        protected abstract void ApplyElement(string key, OptionalObject inputOptional, MatchedElement thisLevel, WalkedPath walkedPath, Dictionary<string, object> context);
+        protected abstract void ApplyElement(string key, JToken inputOptional, MatchedElement thisLevel, WalkedPath walkedPath, JObject context);
 
         /**
          * Static utility method for facilitating writes on input object
@@ -114,9 +116,9 @@ namespace Jolt.Net
          * @param value to write
          * @param opMode to determine if write is applicable
          */
-        protected static void SetData(object parent, MatchedElement matchedElement, object value, OpMode opMode)
+        protected static void SetData(JToken parent, MatchedElement matchedElement, JToken value, OpMode opMode)
         {
-            if (parent is Dictionary<string, object> source)
+            if (parent is JObject source)
             {
                 string key = matchedElement.RawKey;
                 if (opMode.IsApplicable(source, key))
@@ -124,7 +126,8 @@ namespace Jolt.Net
                     source[key] = value;
                 }
             }
-            else if (parent is List<object> list && matchedElement is ArrayMatchedElement ame) {
+            else if (parent is JArray list && matchedElement is ArrayMatchedElement ame)
+            {
                 int origSize = ame.GetOrigSize();
                 int reqIndex = ame.GetRawIndex();
                 if (opMode.IsApplicable(list, reqIndex, origSize))

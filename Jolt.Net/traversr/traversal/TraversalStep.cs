@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
 namespace Jolt.Net
 {
-
     public enum TraversalStepOperation { SET, GET, REMOVE }
 
     /**
@@ -26,32 +26,30 @@ namespace Jolt.Net
      */
     public interface ITraversalStep
     {
-
         /**
          * The three things you can do with a Traversal.
          */
-
 
         /**
          * Return the data for the key from the provided tree object.
          *
          * @return data object if available, or null.
          */
-        OptionalObject Get(object tree, string key);
+        JToken Get(JToken tree, string key);
 
         /**
          * Remove and return the data for the key from the provided tree object.
          *
          * @return data object if available, or null.
          */
-        OptionalObject Remove(object tree, string key);
+        JToken Remove(JToken tree, string key);
 
         /**
          * Insert the data into the tree, overwriting any data that is there.
          *
          * @return returns the data object if successful or null if it could not
          */
-        OptionalObject OverwriteSet(object tree, string key, object data);
+        JToken OverwriteSet(JToken tree, string key, JToken data);
 
         /**
          * @return the child Traversal or null if this Traversal has no child
@@ -63,7 +61,7 @@ namespace Jolt.Net
          *
          * @return new List or Map, depending on the type of the Traversal
          */
-        object NewContainer();
+        JToken NewContainer();
 
         /**
          * Return the Class of the Generic T, so that it can be used in an
@@ -85,7 +83,7 @@ namespace Jolt.Net
          * @param data the data to place if the operation is SET
          * @return if SET, null for fail or the "data" object for ok.  if GET, PANTS
          */
-        OptionalObject Traverse(object tree, TraversalStepOperation op, IEnumerator<string> keys, object data);
+        JToken Traverse(JToken tree, TraversalStepOperation op, IEnumerator<string> keys, JToken data);
     }
 
 }

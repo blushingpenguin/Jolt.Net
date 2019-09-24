@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,7 +39,7 @@ namespace Jolt.Net
         private readonly IReadOnlyDictionary<string, CardinalitySpec> _literalChildren;  // children that are simple exact matches against the input data
         private readonly IReadOnlyList<CardinalitySpec> _computedChildren;        // children that are regex matches against the input data
 
-        public CardinalityCompositeSpec(string rawKey, Dictionary<string, object> spec) :
+        public CardinalityCompositeSpec(string rawKey, JObject spec) :
             base(rawKey)
         {
             var literals = new Dictionary<string, CardinalitySpec>();
@@ -98,7 +99,7 @@ namespace Jolt.Net
         /**
          * Recursively walk the spec input tree.
          */
-        private static List<CardinalitySpec> CreateChildren(Dictionary<string, object> rawSpec)
+        private static List<CardinalitySpec> CreateChildren(JObject rawSpec)
         {
             var children = new List<CardinalitySpec>();
             var actualKeys = new HashSet<string>();
@@ -106,9 +107,9 @@ namespace Jolt.Net
             foreach (var kv in rawSpec)
             {
                 CardinalitySpec childSpec;
-                if (kv.Value is Dictionary<string, object> dic)
+                if (kv.Value.Type == JTokenType.Object)
                 {
-                    childSpec = new CardinalityCompositeSpec(kv.Key, dic);
+                    childSpec = new CardinalityCompositeSpec(kv.Key, (JObject)kv.Value);
                 }
                 else
                 {
@@ -142,7 +143,7 @@ namespace Jolt.Net
          *
          * @return true if this this spec "handles" the inputkey such that no sibling specs need to see it
          */
-        public override bool ApplyCardinality(string inputKey, object input, WalkedPath walkedPath, object parentContainer)
+        public override bool ApplyCardinality(string inputKey, JToken input, WalkedPath walkedPath, JToken parentContainer)
         {
             MatchedElement thisLevel = GetPathElement().Match(inputKey, walkedPath);
             if (thisLevel == null)
@@ -166,27 +167,24 @@ namespace Jolt.Net
             return true;
         }
 
-        private void Process(object input, WalkedPath walkedPath)
+        private void Process(JToken input, WalkedPath walkedPath)
         {
-            if (input is Dictionary<string, object> dic)
+            if (input?.Type == JTokenType.Object)
             {
-                // XXX: not sure what this means
                 // Iterate over the whole entrySet rather than the keyset with follow on gets of the values
-                foreach (var kv in dic.ToList())
+                // (because the collection is modified by the recursive call)
+                var obj = (JObject)input;
+                foreach (var kv in obj.ToList<KeyValuePair<string, JToken>>())
                 {
                     ApplyKeyToLiteralAndComputed(this, kv.Key, kv.Value, walkedPath, input);
                 }
-                // Set<Map.Entry<string, object>> entrySet = new HashSet<>(((Map<string, object>)input).entrySet());
-                // for (Map.Entry<string, object> inputEntry : entrySet) {
-                //     ApplyKeyToLiteralAndComputed(this, inputEntry.getKey(), inputEntry.getValue(), walkedPath, input);
-                // }
             }
-            else if (input is List<object> list)
+            else if (input?.Type == JTokenType.Array)
             {
-
+                var list = (JArray)input;
                 for (int index = 0; index < list.Count; index++)
                 {
-                    object subInput = list[index];
+                    var subInput = list[index];
                     string subKeyStr = index.ToString();
 
                     ApplyKeyToLiteralAndComputed(this, subKeyStr, subInput, walkedPath, input);
@@ -194,7 +192,6 @@ namespace Jolt.Net
             }
             else if (input != null)
             {
-
                 // if not a map or list, must be a scalar
                 string scalarInput = input.ToString();
                 ApplyKeyToLiteralAndComputed(this, scalarInput, null, walkedPath, scalarInput);
@@ -207,7 +204,7 @@ namespace Jolt.Net
          * <p/>
          * For each input key, we see if it matches a literal, and it not, try to match the key with every computed child.
          */
-        private static void ApplyKeyToLiteralAndComputed(CardinalityCompositeSpec spec, string subKeyStr, object subInput, WalkedPath walkedPath, object input)
+        private static void ApplyKeyToLiteralAndComputed(CardinalityCompositeSpec spec, string subKeyStr, JToken subInput, WalkedPath walkedPath, JToken input)
         {
             // if the subKeyStr found a literalChild, then we do not have to try to match any of the computed ones
             if (spec._literalChildren.TryGetValue(subKeyStr, out var literalChild))

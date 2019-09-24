@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+using Newtonsoft.Json.Linq;
+
 namespace Jolt.Net
 {
 
@@ -26,9 +28,9 @@ namespace Jolt.Net
     public abstract class TraversalBuilder<T>
         where T : PathEvaluatingTraversal
     {
-        public T Build(object rawObj)
+        public T Build(JToken rawObj)
         {
-            if (!(rawObj is string outputPathStr))
+            if (!(rawObj is JToken rhsToken) || rhsToken.Type != JTokenType.String)
             {
                 throw new SpecException("Invalid spec, RHS should be a string or array of Strings. Value in question : " + rawObj);
             }
@@ -36,6 +38,7 @@ namespace Jolt.Net
             // Prepend "root" to each output path.
             // This is needed for the "identity" transform, eg if we are just supposed to put the input into the output
             //  what key do we put it under?
+            string outputPathStr = rhsToken.ToString();
             if (string.IsNullOrWhiteSpace(outputPathStr))
             {
                 outputPathStr = SpecDriven.ROOT_KEY;

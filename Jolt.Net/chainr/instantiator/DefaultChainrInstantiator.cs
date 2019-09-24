@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+using Newtonsoft.Json.Linq;
 using System;
 
 namespace Jolt.Net
@@ -25,7 +26,7 @@ namespace Jolt.Net
     {
         public IJoltTransform HydrateTransform(ChainrEntry entry)
         {
-            object spec = entry.GetSpec();
+            var spec = entry.GetSpec();
             Type transformType = entry.GetJoltTransformType();
 
             try
@@ -35,7 +36,7 @@ namespace Jolt.Net
                 {
 
                     // Lookup a Constructor with a Single "object" arg.
-                    var constructor = transformType.GetConstructor(new[] { typeof(object) });
+                    var constructor = transformType.GetConstructor(new[] { typeof(JObject) });
                     if (constructor == null)
                     {
                         // This means the transform class "violated" the SpecTransform marker interface

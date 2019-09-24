@@ -169,7 +169,7 @@ namespace Jolt.Net
          *
          * @return true if this this spec "handles" the inputKey such that no sibling specs need to see it
          */
-        public override bool Apply(string inputKey, OptionalObject inputOptional, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context)
+        public override bool Apply(string inputKey, JToken inputOptional, WalkedPath walkedPath, JObject output, JObject context)
         {
             MatchedElement thisLevel = _pathElement.Match(inputKey, walkedPath);
             if (thisLevel == null)
@@ -182,8 +182,8 @@ namespace Jolt.Net
             {
                 // Note the data found may not be a string, thus we have to call the special objectEvaluate
                 // Optional, because the input data could have been a valid null.
-                OptionalObject optional = tpe.ObjectEvaluate(walkedPath);
-                if (!optional.HasValue)
+                var optional = tpe.ObjectEvaluate(walkedPath);
+                if (optional == null)
                 {
                     return false;
                 }
@@ -191,7 +191,7 @@ namespace Jolt.Net
             }
 
             // add ourselves to the path, so that our children can reference us
-            walkedPath.Add(inputOptional.Value, thisLevel);
+            walkedPath.Add(inputOptional, thisLevel);
 
             // Handle any special / key based children first, but don't have them block anything
             foreach (ShiftrSpec subSpec in _specialChildren)

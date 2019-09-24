@@ -52,7 +52,7 @@ namespace Jolt.Net
             }
             else
             {
-                string[] split = key.Split(new string[] { "\\*" }, StringSplitOptions.None);
+                string[] split = key.Split('*');
                 _prefix = split[0];
                 _suffix = split[1];
             }

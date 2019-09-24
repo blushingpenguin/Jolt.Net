@@ -14,286 +14,219 @@
  * limitations under the License.
  */
 
-namespace Jolt.Net
+using System;
+using System.Text;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+namespace Jolt.Net.Functions.Objects
 {
-#if FALSE
-    public class Objects {
-
-    /**
-     * Given any object, returns, if possible. its Java number equivalent wrapped in Optional
-     * Interprets string as Number
-     *
-     * toNumber("123") == Optional.of(123)
-     * toNumber("-123") == Optional.of(-123)
-     * toNumber("12.3") == Optional.of(12.3)
-     *
-     * toNumber("abc") == Optional.empty()
-     * toNumber(null) == Optional.empty()
-     *
-     * also, see: MathTest#testNitPicks
-     *
-     */
-    public static Optional<? extends Number> toNumber(object arg) {
-        if ( arg instanceof Number ) {
-            return Optional.of( ( (Number) arg ));
-        }
-        else if(arg instanceof string) {
-            try {
-                return Optional.of( (Number) Integer.parseInt( (string) arg ) );
+    class ToInteger : SingleFunction
+    {
+        protected override JToken ApplySingle(JToken arg)
+        {
+            if (arg.Type == JTokenType.Integer ||
+                arg.Type == JTokenType.Float)
+            {
+                return arg.Value<int>();
             }
-            catch(Exception ignored) {}
-            try {
-                return Optional.of( (Number) Long.parseLong( (string) arg ) );
+            if (arg.Type == JTokenType.String &&
+                Int32.TryParse(arg.Value<string>(), out var intVal))
+            {
+                return intVal;
             }
-            catch(Exception ignored) {}
-            try {
-                return Optional.of( (Number) Double.parseDouble( (string) arg ) );
-            }
-            catch(Exception ignored) {}
-            return Optional.empty();
-        }
-        else {
-            return Optional.empty();
+            return null;
         }
     }
 
-    /**
-     * Returns int value of argument, if possible, wrapped in Optional
-     * Interprets string as Number
-     */
-    public static Optional<Integer> toInteger(object arg) {
-        if ( arg instanceof Number ) {
-            return Optional.of( ( (Number) arg ).intValue() );
-        }
-        else if(arg instanceof string) {
-            Optional<? extends Number> optional = toNumber( arg );
-            if ( optional.isPresent() ) {
-                return Optional.of( optional.get().intValue() );
+    class ToLong : SingleFunction
+    {
+        protected override JToken ApplySingle(JToken arg)
+        {
+            if (arg.Type == JTokenType.Integer ||
+                arg.Type == JTokenType.Float)
+            {
+                return arg.Value<long>();
             }
-            else {
-                return Optional.empty();
+            if (arg.Type == JTokenType.String &&
+                Int64.TryParse(arg.Value<string>(), out var longVal))
+            {
+                return longVal;
             }
-        }
-        else {
-            return Optional.empty();
+            return null;
         }
     }
 
-    /**
-     * Returns long value of argument, if possible, wrapped in Optional
-     * Interprets string as Number
-     */
-    public static Optional<Long> toLong(object arg) {
-        if ( arg instanceof Number ) {
-            return Optional.of( ( (Number) arg ).longValue() );
-        }
-        else if(arg instanceof string) {
-            Optional<? extends Number> optional = toNumber( arg );
-            if ( optional.isPresent() ) {
-                return Optional.of( optional.get().longValue() );
+    class ToDouble : SingleFunction
+    {
+        protected override JToken ApplySingle(JToken arg)
+        {
+            if (arg.Type == JTokenType.Integer ||
+                arg.Type == JTokenType.Float)
+            {
+                return arg.Value<double>();
             }
-            else {
-                return Optional.empty();
+            if (arg.Type == JTokenType.String &&
+                Double.TryParse(arg.Value<string>(), out var doubleVal))
+            {
+                return doubleVal;
             }
-        }
-        else {
-            return Optional.empty();
+            return null;
         }
     }
 
-    /**
-     * Returns double value of argument, if possible, wrapped in Optional
-     * Interprets string as Number
-     */
-    public static Optional<Double> toDouble(object arg) {
-        if ( arg instanceof Number ) {
-            return Optional.of( ( (Number) arg ).doubleValue() );
-        }
-        else if(arg instanceof string) {
-            Optional<? extends Number> optional = toNumber( arg );
-            if ( optional.isPresent() ) {
-                return Optional.of( optional.get().doubleValue() );
+    class ToBoolean : SingleFunction
+    {
+        protected override JToken ApplySingle(JToken arg)
+        {
+            if (arg.Type == JTokenType.Boolean)
+            {
+                return arg;
             }
-            else {
-                return Optional.empty();
-            }
-        }
-        else {
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * Returns boolean value of argument, if possible, wrapped in Optional
-     * Interprets Strings "true" & "false" as boolean
-     */
-    public static Optional<Boolean> toBoolean(object arg) {
-        if ( arg instanceof Boolean ) {
-            return Optional.of( (Boolean) arg );
-        }
-        else if(arg instanceof string) {
-            if("true".equalsIgnoreCase( (string)arg )) {
-                return Optional.of( Boolean.TRUE );
-            }
-            else if("false".equalsIgnoreCase( (string)arg )) {
-                return Optional.of( Boolean.FALSE );
-            }
-        }
-        return Optional.empty();
-    }
-
-    /**
-     * Returns string representation of argument, wrapped in Optional
-     *
-     * for array argument, returns Arrays.toString()
-     * for others, returns Objects.toString()
-     *
-     * Note: this method does not return Optional.empty()
-     */
-    public static Optional<string> toString(object arg) {
-        if ( arg instanceof string ) {
-            return Optional.of( (string) arg );
-        }
-        else if ( arg instanceof object[] ) {
-            return Optional.of( Arrays.toString( (object[] )arg ) );
-        }
-        else {
-            return Optional.of( java.util.Objects.toString( arg ) );
-        }
-    }
-
-    /**
-     * Squashes nulls in a list or map.
-     *
-     * Modifies the data.
-     */
-    public static void squashNulls( object input ) {
-        if ( input instanceof List ) {
-            List inputList = (List) input;
-            inputList.removeIf( java.util.Objects::isNull );
-        }
-        else if ( input instanceof Map ) {
-            Map<string,object> inputMap = (Map<string,object>) input;
-
-            List<string> keysToNuke = new ArrayList<>();
-            for (Map.Entry<string,object> entry : inputMap.entrySet()) {
-                if ( entry.getValue() == null ) {
-                    keysToNuke.add( entry.getKey() );
+            if (arg.Type == JTokenType.String)
+            {
+                string s = arg.Value<string>();
+                if (s.Equals("true", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                if (s.Equals("false", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
                 }
             }
-
-            inputMap.keySet().removeAll( keysToNuke );
+            return null;
         }
     }
 
-    /**
-     * Recursively squash nulls in maps and lists.
-     *
-     * Modifies the data.
-     */
-    public static void recursivelySquashNulls(object input) {
-
-        // Makes two passes thru the data.
-        Objects.squashNulls( input );
-
-        if ( input instanceof List ) {
-            List inputList = (List) input;
-            inputList.forEach( i -> recursivelySquashNulls( i ) );
-        }
-        else if ( input instanceof Map ) {
-            Map<string,object> inputMap = (Map<string,object>) input;
-
-            for (Map.Entry<string,object> entry : inputMap.entrySet()) {
-                recursivelySquashNulls( entry.getValue() );
+    class ToString : SingleFunction
+    {
+        private string TokenToString(JToken arg)
+        {
+            if (arg.Type == JTokenType.String)
+            {
+                return arg.Value<string>();
             }
+            if (arg.Type == JTokenType.Array)
+            {
+                var sb = new StringBuilder();
+                sb.Append("[");
+                foreach (var elt in (JArray)arg)
+                {
+                    sb.Append(TokenToString(elt));
+                }
+                sb.Append("]");
+                return sb.ToString();
+            }
+            return arg.ToString();
+        }
+
+        protected override JToken ApplySingle(JToken arg)
+        {
+            if (arg.Type == JTokenType.String)
+            {
+                return arg;
+            }
+            return TokenToString(arg);
         }
     }
 
-
-
-    public static final class toInteger extends Function.SingleFunction<Integer> {
-        @Override
-        protected Optional<Integer> applySingle( final object arg ) {
-            return toInteger( arg );
+    class SquashNulls : SingleFunction
+    {
+        public static JToken Squash(JToken arg)
+        {
+            if (arg.Type == JTokenType.Array)
+            {
+                var arr = (JArray)arg;
+                for (int i = 0; i < arr.Count;)
+                {
+                    if (arr[i].Type == JTokenType.Null)
+                        arr.RemoveAt(i);
+                    else
+                        ++i;
+                }
+            }
+            else if (arg.Type == JTokenType.Object)
+            {
+                var obj = (JObject)arg;
+                var newObj = new JObject();
+                foreach (var kv in obj)
+                {
+                    if (kv.Value.Type != JTokenType.Null)
+                    {
+                        newObj.Add(kv.Key, kv.Value);
+                    }
+                }
+                return newObj;
+            }
+            return arg;
         }
+
+        protected override JToken ApplySingle(JToken arg) =>
+            Squash(arg);
     }
 
-    public static final class toLong extends Function.SingleFunction<Long> {
-        @Override
-        protected Optional<Long> applySingle( final object arg ) {
-            return toLong( arg );
-        }
-    }
+    public class RecursivelySquashNulls : SingleFunction
+    {
+        protected override JToken ApplySingle(JToken arg)
+        {
+            // Makes two passes thru the data.
+            arg = SquashNulls.Squash(arg);
 
-    public static final class toDouble extends Function.SingleFunction<Double> {
-        @Override
-        protected Optional<Double> applySingle( final object arg ) {
-            return toDouble( arg );
-        }
-    }
-
-    public static final class toBoolean extends Function.SingleFunction<Boolean> {
-        @Override
-        protected Optional<Boolean> applySingle( final object arg ) {
-            return toBoolean( arg );
-        }
-    }
-
-    public static final class toString extends Function.SingleFunction<string> {
-        @Override
-        protected Optional<string> applySingle( final object arg ) {
-            return Objects.toString( arg );
-        }
-    }
-
-    public static final class squashNulls extends Function.SingleFunction<object> {
-        @Override
-        protected Optional<object> applySingle( final object arg ) {
-            Objects.squashNulls( arg );
-            return Optional.of( arg );
-        }
-    }
-
-    public static final class recursivelySquashNulls extends Function.SingleFunction<object> {
-        @Override
-        protected Optional<object> applySingle( final object arg ) {
-            Objects.recursivelySquashNulls( arg );
-            return Optional.of( arg );
+            if (arg.Type == JTokenType.Array)
+            {
+                var arr = (JArray)arg;
+                for (int i = 0; i < arr.Count; ++i)
+                {
+                    arr[i] = ApplySingle(arr[i]);
+                }
+            }
+            else if (arg.Type == JTokenType.Object)
+            {
+                var obj = (JObject)arg;
+                foreach (var kv in obj)
+                {
+                    obj[kv.Key] = ApplySingle(kv.Value);
+                }
+            }
+            return arg;
         }
     }
 
     /**
      * Size is a special snowflake and needs specific care
      */
-    public static final class size implements Function {
+    public class Size : IFunction
+    {
+        public JToken Apply(params JToken[] args)
+        {
+            if (args == null || args.Length == 0)
+            {
+                return null;
+            }
 
-        @Override
-        public Optional<object> apply(object... args) {
-            if(args.Length == 0) {
-                return Optional.empty();
+            if (args.Length == 1)
+            {
+                if (args[0] == null)
+                {
+                    return null;
+                }
+                if (args[0].Type == JTokenType.Array)
+                {
+                    return ((JArray)args[0]).Count;
+                }
+                if (args[0].Type == JTokenType.String)
+                {
+                    return args[0].ToString().Length;
+                }
+                if (args[0].Type == JTokenType.Object)
+                {
+                    return ((JObject)args[0]).Count;
+                }
+                return null;
             }
-            else if(args.Length == 1) {
-                if(args[0] == null) {
-                    return Optional.empty();
-                }
-                else if(args[0] instanceof List ) {
-                    return Optional.of(((List) args[0]).size());
-                }
-                else if(args[0] instanceof string) {
-                    return Optional.of( ((string) args[0]).Length() );
-                }
-                else if(args[0] instanceof Map) {
-                    return Optional.of( ((Map) args[0]).size() );
-                }
-                else {
-                    return Optional.empty();
-                }
-            }
-            else {
-                return Optional.of(args.Length);
-            }
+
+            return args.Length;
         }
     }
-}
-#endif
 }

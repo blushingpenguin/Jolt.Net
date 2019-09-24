@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
 namespace Jolt.Net
@@ -39,32 +40,31 @@ namespace Jolt.Net
          *  3) if there something other than a list there, grab it and stuff it and the data into a list
          *     and overwrite what is there with a list.
          */
-        public override OptionalObject HandleFinalSet(ITraversalStep traversalStep, object tree, string key, object data)
+        public override JToken HandleFinalSet(ITraversalStep traversalStep, JToken tree, string key, JToken data)
         {
-            OptionalObject optSub = traversalStep.Get(tree, key);
+            var optSub = traversalStep.Get(tree, key);
 
-            if (!optSub.HasValue || optSub.Value == null)
+            if (optSub == null || optSub.Type == JTokenType.Null)
             {
                 // nothing is here so just set the data
                 traversalStep.OverwriteSet(tree, key, data);
             }
-            else if (optSub.Value is List<object> lo) 
+            else if (optSub is JArray arr) 
             {
                 // there is a list here, so we just add to it
-                lo.Add(data);
+                arr.Add(data);
             }
             else
             {
                 // take whatever is there and make it the first element in an Array
-                var temp = new List<object>();
-                temp.Add(optSub.Value);
+                var temp = new JArray();
+                temp.Add(optSub);
                 temp.Add(data);
 
                 traversalStep.OverwriteSet(tree, key, temp);
             }
 
-            return new OptionalObject(data);
+            return data;
         }
     }
 }
-

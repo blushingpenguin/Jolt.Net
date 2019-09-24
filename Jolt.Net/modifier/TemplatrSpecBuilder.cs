@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+using Jolt.Net.Functions;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
@@ -27,15 +28,15 @@ namespace Jolt.Net
         public const string FUNCTION = "=";
 
         private readonly OpMode _opMode;
-        private readonly Dictionary<string, IFunction> _functionsMap;
+        private readonly IReadOnlyDictionary<string, IFunction> _functionsMap;
 
-        public TemplatrSpecBuilder(OpMode opMode, Dictionary<string, IFunction> functionsMap)
+        public TemplatrSpecBuilder(OpMode opMode, IReadOnlyDictionary<string, IFunction> functionsMap)
         {
             _opMode = opMode;
             _functionsMap = functionsMap;
         }
 
-        public override ModifierSpec CreateSpec(string lhs, object rhs)
+        public override ModifierSpec CreateSpec(string lhs, JToken rhs)
         {
             if (rhs is JObject dic && dic.Count > 0)
             {

@@ -124,9 +124,9 @@ namespace Jolt.Net
 
         }
 
-        protected override void ApplyElement(string inputKey, OptionalObject inputOptional, MatchedElement thisLevel, WalkedPath walkedPath, Dictionary<string, object> context)
+        protected override void ApplyElement(string inputKey, JToken inputOptional, MatchedElement thisLevel, WalkedPath walkedPath, JObject context)
         {
-            object input = inputOptional.Value;
+            JToken input = inputOptional;
             // sanity checks, cannot work on a list spec with map input and vice versa, and runtime with null input
             if (!_specDataType.IsCompatible(input))
             {
@@ -140,12 +140,12 @@ namespace Jolt.Net
                 // if input has changed, wrap
                 if (input != null)
                 {
-                    inputOptional = new OptionalObject(input);
+                    inputOptional = input;
                 }
             }
 
             // if input is List, create special ArrayMatchedElement, which tracks the original size of the input array
-            if (input is List<object> list)
+            if (input is JArray list)
             {
                 // LIST means spec had array index explicitly specified, hence expand if needed
                 if (_specDataType is LIST specList)

@@ -37,7 +37,7 @@ namespace Jolt.Net
         if ( ( json == null ) || ( keyToRemove == null ) ) {
             return;
         }
-        if ( json is Dictionary<string, object> ) {
+        if ( json is JObject ) {
             Dictionary<string, object> jsonMap = cast(json);
 
             // If this level of the tree has the key we are looking for, remove it

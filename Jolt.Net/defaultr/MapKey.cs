@@ -16,12 +16,13 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jolt.Net
 {
     public class MapKey : Key
     {
-        public MapKey(string jsonKey, JObject spec) :
+        public MapKey(string jsonKey, JToken spec) :
             base(jsonKey, spec)
         {
         }
@@ -29,9 +30,9 @@ namespace Jolt.Net
         protected override int GetLiteralIntKey() =>
             throw new InvalidOperationException("Shouldn't be be asking a MapKey for int getLiteralIntKey().");
 
-        protected override void ApplyChild(object container)
+        protected override void ApplyChild(JToken container)
         {
-            if (container is Dictionary<string, object> defaulteeMap)
+            if (container is JObject defaulteeMap)
             {
                 // Find all defaultee keys that match the childKey spec.  Simple for Literal keys, more work for * and |.
                 foreach (string literalKey in DetermineMatchingContainerKeys(defaulteeMap))
@@ -43,23 +44,25 @@ namespace Jolt.Net
             //  the Container vs the Defaultr Spec type for this key.  Container wins, so do nothing.
         }
 
-        private void ApplyLiteralKeyToContainer(string literalKey, Dictionary<string, object> container)
+        private void ApplyLiteralKeyToContainer(string literalKey, JObject container)
         {
-            container.TryGetValue(literalKey, out object defaulteeValue);
+            container.TryGetValue(literalKey, out var defaulteeValue);
 
             if (_children == null)
             {
-                if (defaulteeValue == null)
+                if (defaulteeValue == null ||
+                    defaulteeValue.Type == JTokenType.Null)
                 {
-                    container.Add(literalKey, _literalValue); // apply a copy of the default value into a map
+                    container[literalKey] = _literalValue; // apply a copy of the default value into a map
                 }
             }
             else
             {
-                if (defaulteeValue == null)
+                if (defaulteeValue == null ||
+                    defaulteeValue.Type == JTokenType.Null)
                 {
                     defaulteeValue = CreateOutputContainerObject();
-                    container.Add(literalKey, defaulteeValue);  // push a new sub-container into this map
+                    container[literalKey] = defaulteeValue;  // push a new sub-container into this map
                 }
 
                 // recurse by applying my children to this known valid container
@@ -67,7 +70,7 @@ namespace Jolt.Net
             }
         }
 
-        private IReadOnlyCollection<string> DetermineMatchingContainerKeys(Dictionary<string, object> container)
+        private IReadOnlyCollection<string> DetermineMatchingContainerKeys(JObject container)
         {
             switch (GetOp())
             {
@@ -76,10 +79,10 @@ namespace Jolt.Net
                     return _keyStrings;
                 case OPS.STAR:
                     // Identify all its keys
-                    return container.Keys;
+                    return container.Properties().Select(x => x.Name).ToList();
                 case OPS.OR:
                     // Identify the intersection between its keys and the OR values
-                    var intersection = new HashSet<string>(container.Keys);
+                    var intersection = new HashSet<string>();
                     foreach (var keyString in _keyStrings)
                     {
                         if (container.ContainsKey(keyString))

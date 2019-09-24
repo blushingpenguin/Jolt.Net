@@ -3,6 +3,7 @@ using System;
 
 namespace Jolt.Net.Test
 {
+#if FALSE
     class Program
     {
         static string _spec = @"
@@ -41,7 +42,9 @@ namespace Jolt.Net.Test
             var spec = JToken.Parse(_spec.Trim());
             var chainr = Chainr.FromSpec(spec);
             var input = JObject.Parse(_input.Trim());
-            chainr.Transform(input);
+            var result = chainr.Transform(input);
+            Console.Write(result.ToString());
         }
     }
+#endif
 }

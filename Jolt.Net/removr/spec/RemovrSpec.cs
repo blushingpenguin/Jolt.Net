@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -37,18 +38,26 @@ namespace Jolt.Net
         // Ex Keys :  *, cdv-*, *-$de
         public static IPathElement Parse(string key)
         {
-            if ("*" == key) {
+            if ("*" == key)
+            {
                 return new StarAllPathElement(key);
             }
 
             int numOfStars = StringTools.CountMatches(key, "*");
-            if (numOfStars == 1) {
+            if (numOfStars == 1)
+            {
                 return new StarSinglePathElement(key);
-            } else if (numOfStars == 2) {
+            }
+            else if (numOfStars == 2)
+            {
                 return new StarDoublePathElement(key);
-            } else if (numOfStars > 2) {
+            }
+            else if (numOfStars > 2)
+            {
                 return new StarRegexPathElement(key);
-            } else {
+            }
+            else
+            {
                 return new LiteralPathElement(key);
             }
         }
@@ -74,7 +83,7 @@ namespace Jolt.Net
          *
          * @return the indicies to remove, otherwise empty List.
          */
-        public abstract List<int?> ApplyToList(List<object> inputList);
+        public abstract IEnumerable<int> ApplyToList(JArray inputList);
 
         /**
          * Build a list of keys to remove from the input map, using the pathElement
@@ -82,6 +91,6 @@ namespace Jolt.Net
          *
          * @return the keys to remove, otherwise empty List.
          */
-        public abstract List<string> ApplyToMap(Dictionary<string, object> inputMap);
+        public abstract List<string> ApplyToMap(JObject inputMap);
     }
 }

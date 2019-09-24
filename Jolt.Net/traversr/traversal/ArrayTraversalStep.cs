@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -24,50 +25,52 @@ namespace Jolt.Net
      */
     public class ArrayTraversalStep : BaseTraversalStep
     {
-
         public ArrayTraversalStep(Traversr traversr, ITraversalStep child) :
             base(traversr, child)
         {
         }
 
-        public override Type GetStepType() => typeof(List<object>);
+        public override Type GetStepType() => typeof(JArray);
 
-        public override object NewContainer() => new List<object>();
+        public override JToken NewContainer() => new JArray();
 
-        public override OptionalObject Get(object tree, string key)
+        public override JToken Get(JToken tree, string key)
         {
-            var list = (List<object>)tree;
+            var list = (JArray)tree;
             int arrayIndex = Int32.Parse(key);
-            if (arrayIndex < list.Count)
+            if (arrayIndex >= 0 && arrayIndex < list.Count)
             {
-                return new OptionalObject(list[arrayIndex]);
+                return list[arrayIndex];
             }
-            return new OptionalObject();
+            return null;
         }
 
-        public override OptionalObject Remove(object tree, string key)
+        public override JToken Remove(JToken tree, string key)
         {
-            var list = (List<object>)tree;
+            var list = (JArray)tree;
             int arrayIndex = Int32.Parse(key);
             if (arrayIndex < list.Count)
             {
                 var value = list[arrayIndex];
                 list.RemoveAt(arrayIndex);
-                return new OptionalObject(value);
+                return value;
             }
-            return new OptionalObject();
+            return null;
         }
 
-        public override OptionalObject OverwriteSet(object tree, string key, object data)
+        public override JToken OverwriteSet(JToken tree, string key, JToken data)
         {
-            var list = (List<object>)tree;
+            var list = (JArray)tree;
             int arrayIndex = Int32.Parse(key);
-            EnsureArraySize(list, arrayIndex);            // make sure it is big enough
-            list[arrayIndex] = data;
-            return new OptionalObject(data);
+            if (arrayIndex >= 0)
+            {
+                EnsureArraySize(list, arrayIndex);            // make sure it is big enough
+                list[arrayIndex] = data;
+            }
+            return data;
         }
 
-        private static void EnsureArraySize(List<object> list, int upperIndex)
+        private static void EnsureArraySize(JArray list, int upperIndex)
         {
             for (int sizing = list.Count; sizing <= upperIndex; sizing++)
             {

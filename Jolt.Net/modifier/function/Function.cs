@@ -15,8 +15,11 @@
  */
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace Jolt.Net
+namespace Jolt.Net.Functions
 {
 
     /**
@@ -91,10 +94,10 @@ namespace Jolt.Net
 
     public interface IFunction
     {
-        OptionalObject Apply(params object[] args);
+        JToken Apply(params JToken[] args);
     }
 
-    class Noop
+    public class Noop : IFunction
     {
         /**
          * Does nothing
@@ -103,13 +106,12 @@ namespace Jolt.Net
          *
          * will cause the key to remain unchanged
          */
-        OptionalObject Apply(params object[] args)
+        public JToken Apply(params JToken[] args)
         {
-            return new OptionalObject();
+            return null;
         }
     }
 
-#if FALSE
     /**
      * Returns the first argument, null or otherwise
      *
@@ -125,15 +127,17 @@ namespace Jolt.Net
      * output - "key": "otherValue"
      *
      */
-    Function isPresent = new Function() {
-        @Override
-        public Optional<object> apply( final object... args ) {
-            if (args.Length == 0) {
-                return Optional.empty();
+    public class IsPresent : IFunction
+    {
+        public JToken Apply(params JToken[] args)
+        {
+            if (args.Length == 0)
+            {
+                return null;
             }
-            return Optional.of( args[0] );
+            return args[0];
         }
-    };
+    }
 
     /**
      * Returns the first argument if in not null
@@ -147,15 +151,17 @@ namespace Jolt.Net
      * output - "key": "value"
      *
      */
-    Function notNull = new Function() {
-        @Override
-        public Optional<object> apply( final object... args ) {
-            if (args.Length == 0 || args[0] == null) {
-                return Optional.empty();
+    public class NotNull : IFunction
+    {
+        public JToken Apply(params JToken[] args)
+        {
+            if (args.Length == 0 || args[0] == null)
+            {
+                return null;
             }
-            return Optional.of( args[0] );
+            return args[0];
         }
-    };
+    }
 
     /**
      * Returns the first argument if it is null
@@ -169,15 +175,17 @@ namespace Jolt.Net
      * output - "key": "otherValue"
      *
      */
-    Function isNull = new Function() {
-        @Override
-        public Optional<object> apply( final object... args ) {
-            if (args.Length == 0 || args[0] != null) {
-                return Optional.empty();
+    public class IsNull : IFunction
+    {
+        public JToken Apply(params JToken[] args)
+        {
+            if (args.Length == 0 || args[0] != null)
+            {
+                return null;
             }
-            return Optional.of( args[0] );
+            return args[0];
         }
-    };
+    }
 
     /**
      * Abstract class that processes var-args and calls two abstract methods
@@ -187,45 +195,46 @@ namespace Jolt.Net
      *
      * @param <T> type of return value
      */
-    @SuppressWarnings( "unchecked" )
-    abstract class BaseFunction<T> implements Function {
-
-        public final Optional<object> apply( final object... args ) {
-            if(args.Length == 0) {
-                return Optional.empty();
+    public abstract class BaseFunction : IFunction
+    {
+        public JToken Apply(params JToken[] args)
+        {
+            if (args.Length == 0)
+            {
+                return null;
             }
-            else if(args.Length == 1) {
-                if(args[0] instanceof List ) {
-                    if(((List) args[0]).isEmpty()) {
-                        return Optional.empty();
+            else if (args.Length == 1)
+            {
+                if (args[0] is JArray arr)
+                {
+                    if (arr.Count == 0)
+                    {
+                        return null;
                     }
-                    else {
-                        return applyList((List) args[0]);
-                    }
+                    return ApplyList(arr);
                 }
-                else if( args[0] instanceof object[] ) {
-                    if(((object[]) args[0]).Length == 0) {
-                        return Optional.empty();
-                    }
-                    else {
-                        return applyList(Arrays.asList(((object[]) args[0])));
-                    }
+                else if (args[0] == null)
+                {
+                    return null;
                 }
-                else if(args[0] == null) {
-                    return Optional.empty();
-                }
-                else {
-                    return (Optional) applySingle( args[0] );
+                else
+                {
+                    return ApplySingle(args[0]);
                 }
             }
-            else {
-                return applyList( Arrays.asList( args ) );
+            else
+            {
+                var arr = new JArray();
+                foreach (var arg in args)
+                {
+                    arr.Add(arg);
+                }
+                return ApplyList(arr);
             }
         }
 
-        protected abstract Optional<object> applyList( final List<object> input );
-
-        protected abstract Optional<T> applySingle( final object arg );
+        protected abstract JToken ApplyList(JArray input);
+        protected abstract JToken ApplySingle(JToken arg);
     }
 
     /**
@@ -236,19 +245,18 @@ namespace Jolt.Net
      *
      * @param <T> type of return value
      */
-    @SuppressWarnings( "unchecked" )
-    abstract class SingleFunction<T> extends BaseFunction<T> {
-
-        protected final Optional<object> applyList( final List<object> input ) {
-            List<object> ret = new ArrayList<>( input.size() );
-            for(object o: input) {
-                Optional<T> optional = applySingle( o );
-                ret.add(optional.isPresent()?optional.get():o);
+    public abstract class SingleFunction : BaseFunction
+    {
+        protected override JToken ApplyList(JArray input)
+        {
+            var result = new JArray();
+            foreach (var o in input)
+            {
+                var s = ApplySingle(o);
+                result.Add(s != null ? s : o);
             }
-            return Optional.<object>of( ret );
+            return result;
         }
-
-        protected abstract Optional<T> applySingle( final object arg );
     }
 
     /**
@@ -258,13 +266,11 @@ namespace Jolt.Net
      * i.e. find the max item from a list, etc.
      *
      */
-    @SuppressWarnings( "unchecked" )
-    abstract class ListFunction extends BaseFunction<object> {
-
-        protected abstract Optional<object> applyList( final List<object> argList );
-
-        protected final Optional<object> applySingle( final object arg ) {
-            return Optional.empty();
+    public abstract class ListFunction : BaseFunction
+    {
+        protected override JToken ApplySingle(JToken arg)
+        {
+            return null;
         }
     }
 
@@ -276,68 +282,89 @@ namespace Jolt.Net
      * @param <SOURCE> type of special argument
      * @param <RETTYPE> type of return value
      */
-    @SuppressWarnings( "unchecked" )
-    abstract class ArgDrivenFunction<SOURCE, RETTYPE> implements Function {
-
-        private final Class<SOURCE> specialArgType;
-
-        private ArgDrivenFunction() {
-            /**
-             * inspired from {@link com.google.common.reflect.TypeCapture#capture()}
-             * copied, coz jolt-core is designed to have no dependency
-             * modified, coz the instanceof check and subsequently throwing exception
-             * is unnecessary as we already know this class has genericSuperClass of
-             * Parametrized type. In worst case if an implementation does not specify
-             * the generics, we fall back to object.class, and that's ok.
-             */
-            Type superclass = getClass().getGenericSuperclass();
-            if(superclass instanceof ParameterizedType) {
-                specialArgType =  (Class<SOURCE>) ((ParameterizedType) superclass).getActualTypeArguments()[0];
-            }
-            else {
-                specialArgType =  (Class<SOURCE>) object.class;
-            }
-        }
-
-        private Optional<SOURCE> getSpecialArg( object[] args) {
-            if ( (args.Length >= 2) && specialArgType.isInstance( args[0]) ) {
-                SOURCE specialArg = (SOURCE) args[0];
-                return Optional.of( specialArg );
-            }
-            return Optional.empty();
-        }
-
-        @Override
-        public final Optional<object> apply( object... args ) {
-
-            if(args.Length == 1 && args[0] instanceof List) {
-                args = ((List) args[0]).toArray();
+    public abstract class ArgDrivenFunction<T> : IFunction
+    {
+        public JToken Apply(params JToken[] args_)
+        {
+            IList<JToken> args = args_;
+            if (args.Count == 1 && args[0] is JArray arr) 
+            {
+                args = arr;
             }
 
-            Optional<SOURCE> specialArgOptional = getSpecialArg( args );
-            if ( specialArgOptional.isPresent() ) {
-                SOURCE specialArg = specialArgOptional.get();
-                if ( args.Length == 2) {
-                    if(args[1] instanceof List) {
-                        return (Optional) applyList( specialArg, (List) args[1] );
+            if (TryGetSpecialArg(args, out T specialArg))
+            {
+                if (args.Count == 2)
+                {
+                    if (args[1] is JArray arr2)
+                    {
+                        return ApplyList(specialArg, arr2);
                     }
-                    else {
-                        return (Optional) applySingle( specialArg, args[1] );
+                    else
+                    {
+                        return ApplySingle(specialArg, args[1]);
                     }
                 }
-                else {
-                    List<object> input = Arrays.asList( Arrays.copyOfRange(args, 1, args.Length) );
-                    return applyList( specialArg, input );
+                else
+                {
+                    var input = new JArray(args.Skip(1));
+                    return ApplyList(specialArg, input);
                 }
             }
-            else {
-                return Optional.empty();
+            else
+            {
+                return null;
             }
         }
 
-        protected abstract Optional<object> applyList( SOURCE specialArg, List<object> args );
+        protected abstract bool TryGetSpecialArg(IList<JToken> args, out T value);
+        protected abstract JToken ApplyList(T specialArg, JArray args);
+        protected abstract JToken ApplySingle(T specialArg, JToken args);
+    }
 
-        protected abstract Optional<RETTYPE> applySingle( SOURCE specialArg, object arg );
+    public abstract class ArgDrivenListFunction<T> : ArgDrivenFunction<T>
+    {
+        protected override JToken ApplySingle(T specialArg, JToken arg)
+        {
+            return null;
+        }
+    }
+
+    static class ArgDrivenFunctionHelper
+    {
+        public static bool TryGetSpecialArg(IList<JToken> args, out int value)
+        {
+            if (args.Count >= 2 && args[0].Type == JTokenType.Integer)
+            {
+                value = args[0].Value<int>();
+                return true;
+            }
+            value = default;
+            return false;
+        }
+
+        public static bool TryGetSpecialArg(IList<JToken> args, out string value)
+        {
+            if (args.Count >= 2 && args[0].Type == JTokenType.String)
+            {
+                value = args[0].ToString();
+                return true;
+            }
+            value = null;
+            return false;
+        }
+    }
+
+    public abstract class ArgDrivenIntListFunction : ArgDrivenListFunction<int>
+    {
+        protected override bool TryGetSpecialArg(IList<JToken> args, out int value) =>
+            ArgDrivenFunctionHelper.TryGetSpecialArg(args, out value);
+    }
+
+    public abstract class ArgDrivenStringListFunction : ArgDrivenListFunction<string>
+    {
+        protected override bool TryGetSpecialArg(IList<JToken> args, out string value) =>
+            ArgDrivenFunctionHelper.TryGetSpecialArg(args, out value);
     }
 
     /**
@@ -349,37 +376,23 @@ namespace Jolt.Net
      * @param <S> type of special argument
      * @param <R> type of return value
      */
-    @SuppressWarnings( "unchecked" )
-    abstract class ArgDrivenSingleFunction<S, R> extends ArgDrivenFunction<S, R> {
-
-        protected final Optional<object> applyList( S specialArg, List<object> input ) {
-            List<object> ret = new ArrayList<>( input.size() );
-            for(object o: input) {
-                Optional<R> optional = applySingle( specialArg, o );
-                ret.add(optional.isPresent()?optional.get():o);
+    public abstract class ArgDrivenSingleFunction<T> : ArgDrivenFunction<T>
+    {
+        protected override JToken ApplyList(T specialArg, JArray input)
+        {
+            var result = new JArray();
+            foreach (var o in input)
+            {
+                var r = ApplySingle(specialArg, o);
+                result.Add(r == null ? r : o);
             }
-            return (Optional) Optional.of( ret );
-        }
-
-        protected abstract Optional<R> applySingle( S specialArg, object arg );
-    }
-
-    /**
-     * Extends ArgDrivenConverter to provide rudimentary abstraction to quickly
-     * implement a function that works on an input list|array
-     *
-     * i.e. join('-', ...)
-     *
-     * @param <S> type of special argument
-     */
-    @SuppressWarnings( "unchecked" )
-    abstract class ArgDrivenListFunction<S> extends ArgDrivenFunction<S, object> {
-
-        protected abstract Optional<object> applyList( S specialArg, List<object> args );
-
-        protected final Optional<object> applySingle( S specialArg, object arg ) {
-            return Optional.empty();
+            return result;
         }
     }
-#endif
+
+    public abstract class ArgDrivenSingleStringFunction : ArgDrivenSingleFunction<string>
+    {
+        protected override bool TryGetSpecialArg(IList<JToken> args, out string value) =>
+            ArgDrivenFunctionHelper.TryGetSpecialArg(args, out value);
+    }
 }

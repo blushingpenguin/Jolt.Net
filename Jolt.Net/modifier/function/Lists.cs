@@ -14,89 +14,78 @@
  * limitations under the License.
  */
 
-namespace Jolt.Net
-{
-#if FALSE
-    public class Lists {
+using Newtonsoft.Json.Linq;
+using System;
+using System.Linq;
 
+namespace Jolt.Net.Functions.Lists
+{
     /**
      * Given a list, return the first element
      */
-    public static class FirstElement : ListFunction {
-
-        @Override
-        protected Optional applyList( final List argList ) {
-            return argList.size() > 0 ?
-                    Optional.of( argList.get( 0 ) ) :
-                    Optional.empty();
+    public class FirstElement : ListFunction
+    {
+        protected override JToken ApplyList(JArray input)
+        {
+            return input.Count > 0 ? input[0] : null;
         }
     }
 
     /**
      * Given a list, return the last element
      */
-    public static final class lastElement extends Function.ListFunction {
-
-        @Override
-        protected Optional applyList( final List argList ) {
-            return argList.size() > 0 ?
-                    Optional.of( argList.get( argList.size() - 1 ) ) :
-                    Optional.empty();
+    public class LastElement : ListFunction
+    {
+        protected override JToken ApplyList(JArray input)
+        {
+            return input.Count > 0 ? input[input.Count - 1] : null;
         }
     }
 
     /**
      * Given an index at arg[0], and a list at arg[1] or args[1...N], return element at index of list or array
      */
-    public static final class elementAt extends Function.ArgDrivenListFunction<Integer> {
-
-        @Override
-        protected Optional<object> applyList( final Integer specialArg, final List<object> args ) {
-            if ( specialArg != null && args != null && args.size() > specialArg ) {
-                return Optional.of( args.get( specialArg ) );
+    public class ElementAt : ArgDrivenIntListFunction
+    {
+        protected override JToken ApplyList(int specialArg, JArray args)
+        {
+            if (args != null && specialArg >= 0 && specialArg < args.Count)
+            {
+                return args[specialArg];
             }
-            return Optional.empty();
+            return null;
         }
     }
 
     /**
      * Given an arbitrary number of arguments, return them as list
      */
-    public static final class toList extends Function.BaseFunction<List> {
-        @Override
-        protected Optional<object> applyList( final List input ) {
-            return Optional.<object>of( input );
+    public class ToList : BaseFunction
+    {
+        protected override JToken ApplyList(JArray input)
+        {
+            return input;
         }
 
-        @Override
-        protected Optional<List> applySingle( final object arg ) {
-            return Optional.<List>of( Arrays.asList( arg ) );
+        protected override JToken ApplySingle(JToken arg)
+        {
+            return new JArray(arg);
         }
     }
 
     /**
      * Given an arbitrary list of items, returns a new array of them in sorted state
      */
-    public static final class sort extends Function.BaseFunction {
-
-        @Override
-        protected Optional applyList( final List argList ) {
-            try {
-                object[] dest = argList.toArray();
-                Arrays.sort( dest );
-                return Optional.<object>of( dest );
-            }
-            // if any of the elements are not Comparable<?> it'll throw a ClassCastException
-            catch(Exception ignored) {
-                return Optional.empty();
-            }
+    public class Sort : BaseFunction
+    {
+        protected override JToken ApplyList(JArray input)
+        {
+            return new JArray(input.OrderBy(x => x.ToString()));
         }
 
-        @Override
-        protected Optional applySingle( final object arg ) {
-            return Optional.of( arg );
+        protected override JToken ApplySingle(JToken arg)
+        {
+            return arg;
         }
     }
-}
-#endif
 }

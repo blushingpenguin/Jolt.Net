@@ -27,6 +27,6 @@ namespace Jolt.Net
          * @return the results of the transformation
          * @throws com.bazaarvoice.jolt.exception.TransformException if there are issues with the transform
          */
-        JObject Transform(JObject input);
+        JToken Transform(JToken input);
     }
 }

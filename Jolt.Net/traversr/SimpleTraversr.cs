@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
 namespace Jolt.Net
@@ -36,7 +37,7 @@ namespace Jolt.Net
         {
         }
 
-        public override OptionalObject HandleFinalSet(ITraversalStep traversalStep, object tree, string key, object data)
+        public override JToken HandleFinalSet(ITraversalStep traversalStep, JToken tree, string key, JToken data)
         {
             return traversalStep.OverwriteSet(tree, key, data);
         }
@@ -44,11 +45,9 @@ namespace Jolt.Net
         /**
          * Only make a new instance of a container object for SET, if there is nothing "there".
          */
-        public override OptionalObject HandleIntermediateGet(ITraversalStep traversalStep, object tree, string key, TraversalStepOperation op)
+        public override JToken HandleIntermediateGet(ITraversalStep traversalStep, JToken tree, string key, TraversalStepOperation op)
         {
-            OptionalObject optSub = traversalStep.Get(tree, key);
-
-            object sub = optSub.Value;
+            var sub = traversalStep.Get(tree, key);
 
             if (sub == null && op == TraversalStepOperation.SET)
             {
@@ -57,7 +56,7 @@ namespace Jolt.Net
                 traversalStep.OverwriteSet(tree, key, sub);
             }
 
-            return new OptionalObject(sub);
+            return sub;
         }
     }
 }

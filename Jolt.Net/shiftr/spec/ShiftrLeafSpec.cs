@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
 namespace Jolt.Net
@@ -40,27 +41,27 @@ namespace Jolt.Net
         // List of the processed version of the "write specifications"
         private readonly IReadOnlyList<PathEvaluatingTraversal> _shiftrWriters;
 
-        public ShiftrLeafSpec(string rawKey, object rhs) :
+        public ShiftrLeafSpec(string rawKey, JToken rhs) :
             base(rawKey)
         {
             List<PathEvaluatingTraversal> writers;
-            if (rhs is string)
+            if (rhs.Type == JTokenType.String)
             {
                 // leaf level so spec is an dot notation write path
                 writers = new List<PathEvaluatingTraversal>();
                 writers.Add(TRAVERSAL_BUILDER.Build(rhs));
             }
-            else if (rhs is List<PathEvaluatingTraversal> rhsList)
+            else if (rhs is JArray rhsList)
             {
                 // leaf level list
                 // Spec : "foo": ["a", "b"] : Shift the value of "foo" to both "a" and "b"
                 writers = new List<PathEvaluatingTraversal>(rhsList.Count);
-                foreach (object dotNotation in rhsList)
+                foreach (var dotNotation in rhsList)
                 {
                     writers.Add(TRAVERSAL_BUILDER.Build(dotNotation));
                 }
             }
-            else if (rhs == null)
+            else if (rhs.Type == JTokenType.Null)
             {
                 // this means someone wanted to match something, but not send it anywhere.  Basically like a removal.
                 writers = new List<PathEvaluatingTraversal>();
@@ -78,21 +79,20 @@ namespace Jolt.Net
          *
          * @return true if this this spec "handles" the inputkey such that no sibling specs need to see it
          */
-        public override bool Apply(string inputKey, OptionalObject inputOptional, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context)
+        public override bool Apply(string inputKey, JToken inputOptional, WalkedPath walkedPath, JObject output, JObject context)
         {
-
-            object input = inputOptional.Value;
+            JToken input = inputOptional;
             MatchedElement thisLevel = _pathElement.Match(inputKey, walkedPath);
             if (thisLevel == null)
             {
                 return false;
             }
 
-            object data;
+            JToken data;
             bool realChild = false;  // by default don't block further Shiftr matches
 
             if (_pathElement is DollarPathElement ||
-                 _pathElement is HashPathElement)
+                _pathElement is HashPathElement)
             {
                 // The data is already encoded in the thisLevel object created by the pathElement.match called above
                 data = thisLevel.GetCanonicalForm();
@@ -107,10 +107,10 @@ namespace Jolt.Net
                 // We try to walk down the tree to find the value / data we want
 
                 // Note the data found may not be a string, thus we have to call the special objectEvaluate
-                OptionalObject evaledData = tpe.ObjectEvaluate(walkedPath);
-                if (evaledData.HasValue)
+                var evaledData = tpe.ObjectEvaluate(walkedPath);
+                if (evaledData != null)
                 {
-                    data = evaledData.Value;
+                    data = evaledData;
                 }
                 else
                 {

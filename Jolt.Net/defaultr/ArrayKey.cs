@@ -54,12 +54,13 @@ namespace Jolt.Net
 
         protected override int GetLiteralIntKey() => _keyInt;
 
-        protected override void ApplyChild(object container)
+        protected override void ApplyChild(JToken container)
         {
-            if (container is List<object> defaultList)
+            if (container is JArray defaultList)
             {
                 // Find all defaultee keys that match the childKey spec.  Simple for Literal keys, more work for * and |.
-                foreach (int literalKey in DetermineMatchingContainerKeys(defaultList)) {
+                foreach (int literalKey in DetermineMatchingContainerKeys(defaultList))
+                {
                     ApplyLiteralKeyToContainer(literalKey, defaultList);
                 }
             }
@@ -67,21 +68,20 @@ namespace Jolt.Net
             //  the Container vs the Defaultr Spec type for this key.  Container wins, so do nothing.
         }
 
-        private void ApplyLiteralKeyToContainer(int literalIndex, List<object> container)
+        private void ApplyLiteralKeyToContainer(int literalIndex, JArray container)
         {
-            object defaulteeValue = container[literalIndex];
+            JToken defaulteeValue = container[literalIndex];
 
             if (_children == null)
             {
-                if (defaulteeValue == null)
+                if (defaulteeValue.Type == JTokenType.Null)
                 {
-                    // TODO: DeepCopy.SimpleDeepCopy(
-                    container[literalIndex] = _literalValue;  // apply a copy of the default value into a List, assumes the list as already been expanded if needed.
+                    container[literalIndex] = _literalValue.DeepClone();  // apply a copy of the default value into a List, assumes the list as already been expanded if needed.
                 }
             }
             else
             {
-                if (defaulteeValue == null)
+                if (defaulteeValue.Type == JTokenType.Null)
                 {
                     defaulteeValue = CreateOutputContainerObject();
                     container[literalIndex] = defaulteeValue; // push a new sub-container into this list
@@ -92,7 +92,7 @@ namespace Jolt.Net
             }
         }
 
-        private List<int> DetermineMatchingContainerKeys(List<object> container)
+        private List<int> DetermineMatchingContainerKeys(JToken container)
         {
             switch (GetOp())
             {
@@ -102,7 +102,7 @@ namespace Jolt.Net
                 case OPS.STAR:
                     // Identify all its keys
                     // this assumes the container list has already been expanded to the right size
-                    var defaultList = (List<object>)container;
+                    var defaultList = (JArray)container;
                     var allIndexes = new List<int>(defaultList.Count);
                     for (int index = 0; index < defaultList.Count; index++)
                     {
@@ -112,10 +112,11 @@ namespace Jolt.Net
                 case OPS.OR:
                     // Identify the intersection between the container "keys" and the OR values
                     var indexesInRange = new List<int>();
+                    int count = ((JArray)container).Count;
 
                     foreach (int orValue in _keyInts)
                     {
-                        if (orValue < container.Count)
+                        if (orValue < count)
                         {
                             indexesInRange.Add(orValue);
                         }

@@ -13,221 +13,198 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-namespace Jolt.Net
+using Newtonsoft.Json.Linq;
+using System;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace Jolt.Net.Functions.Strings
 {
-#if FALSE
-    public class Strings {
-
-    public static final class toLowerCase extends Function.SingleFunction<string> {
-        @Override
-        protected Optional<string> applySingle( final object arg ) {
-
-            if ( ! (arg instanceof string) ) {
-                return Optional.empty();
+    public abstract class StringFunction : SingleFunction
+    {
+        protected override JToken ApplySingle(JToken arg)
+        {
+            if (arg.Type != JTokenType.String)
+            {
+                return null;
             }
-
-            string argString = (string) arg;
-
-            return Optional.of( argString.toLowerCase() );
+            return ApplyString(arg.ToString());
         }
+
+        protected abstract string ApplyString(string value);
     }
 
-    public static final class toUpperCase extends Function.SingleFunction<string> {
-        @Override
-        protected Optional<string> applySingle( final object arg ) {
-
-            if ( ! (arg instanceof string) ) {
-                return Optional.empty();
-            }
-
-            string argString = (string) arg;
-
-            return Optional.of( argString.toUpperCase() );
-        }
+    public class ToLowerCase : StringFunction
+    {
+        protected override string ApplyString(string arg) =>
+            arg.ToLowerInvariant();
     }
 
-    public static final class trim extends Function.SingleFunction<string> {
-        @Override
-        protected Optional<string> applySingle( final object arg ) {
-
-            if ( ! (arg instanceof string) ) {
-                return Optional.empty();
-            }
-
-            string argString = (string) arg;
-
-            return Optional.of( argString.trim() );
-        }
+    public class ToUpperCase : StringFunction
+    {
+        protected override string ApplyString(string arg) =>
+            arg.ToUpperInvariant();
     }
 
-    public static final class concat extends Function.ListFunction {
-        @Override
-        protected Optional<object> applyList( final List<object> argList ) {
-            StringBuilder sb = new StringBuilder(  );
-            for(object arg: argList ) {
-                if ( arg != null ) {
-                    sb.append(arg.toString() );
+    public class Trim : StringFunction
+    {
+        protected override string ApplyString(string value) =>
+            value.Trim();
+    }
+
+    public class Concat : ListFunction
+    {
+        protected override JToken ApplyList(JArray argList)
+        {
+            var sb = new StringBuilder();
+            foreach (var arg in argList)
+            {
+                if (arg != null)
+                {
+                    sb.Append(arg.ToString());
                 }
             }
-            return Optional.of(sb.toString());
+            return sb.ToString();
         }
     }
 
-    public static final class substring extends Function.ListFunction {
+    public class Substring : ListFunction
+    {
+        protected override JToken ApplyList(JArray argList)
+        {
+            // if argList is null or not the right size; bail
+            if (argList == null || argList.Count != 3)
+            {
+                return null;
+            }
 
-        @Override
-        protected Optional<object> applyList(List<object> argList) {
+            if (!(argList[0].Type == JTokenType.String &&
+                  argList[1].Type == JTokenType.Integer &&
+                  argList[2].Type == JTokenType.Integer))
+            {
+                return null;
+            }
 
-            // There is only one path that leads to success and many
-            //  ways for this to fail.   So using a do/while loop
-            //  to make the bailing easy.
-            do {
+            // If we get here, then all these casts should work.
+            string tuna = argList[0].Value<string>();
+            int start = argList[1].Value<int>();
+            int end = argList[2].Value<int>();
 
-                // if argList is null or not the right size; bail
-                if(argList == null || argList.size() != 3 ) {
-                    break;
-                }
+            // do start and end make sense?
+            if (start >= end || start < 0 || end < 1 || end > tuna.Length)
+            {
+                return null;
+            }
 
-                if ( ! ( argList.get(0) instanceof string &&
-                         argList.get(1) instanceof Integer &&
-                         argList.get(2) instanceof Integer ) ) {
-                    break;
-                }
-
-                // If we get here, then all these casts should work.
-                string tuna = (string) argList.get(0);
-                int start = (Integer) argList.get(1);
-                int end = (Integer) argList.get(2);
-
-                // do start and end make sense?
-                if ( start >= end || start < 0 || end < 1 || end > tuna.Length() ) {
-                    break;
-                }
-
-                return Optional.of(tuna.substring(start, end));
-
-            } while( false );
-
-            // if we got here, then return an Optional.empty.
-            return Optional.empty();
+            return tuna.Substring(start, end - start);
         }
     }
 
-    @SuppressWarnings( "unchecked" )
-    public static final class join extends Function.ArgDrivenListFunction<string> {
-
-        @Override
-        protected Optional<object> applyList( final string specialArg, final List<object> args ) {
-            StringBuilder sb = new StringBuilder(  );
-            for(int i=0; i < args.size(); i++) {
-                object arg = args.get(i);
-                if (arg != null ) {
-                    string argString = arg.toString();
-                    if( !("".equals( argString ))) {
-                        sb.append( argString );
-                        if ( i < args.size() - 1 ) {
-                            sb.append( specialArg );
+    public class Join : ArgDrivenStringListFunction
+    {
+        protected override JToken ApplyList(string specialArg, JArray args)
+        {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < args.Count; ++i)
+            {
+                object arg = args[i];
+                if (arg != null)
+                {
+                    string argString = arg.ToString();
+                    if (!String.IsNullOrEmpty(argString))
+                    {
+                        sb.Append(argString);
+                        if (i < args.Count - 1)
+                        {
+                            sb.Append(specialArg);
                         }
                     }
                 }
             }
-            return Optional.of( sb.toString() );
+            return sb.ToString();
         }
     }
 
-    public static final class split extends Function.ArgDrivenSingleFunction<string, List> {
-      @Override
-      protected Optional<List> applySingle(final string separator, final object source) {
-        if (source == null || separator == null) {
-          return Optional.empty();
-        }
-        else if ( source instanceof string ) {
-          // only try to split input strings
-          string inputString = (string) source;
-          return Optional.of( Arrays.asList(inputString.split(separator)) );
-        }
-        else {
-          return Optional.empty();
-        }
-      }
-    }
-
-
-    public static final class leftPad extends Function.ArgDrivenListFunction<string> {
-        @Override
-        protected Optional<object> applyList(string source, List<object> args) {
-
-            return padString( true, source, args );
+    public class Split : ArgDrivenSingleStringFunction
+    {
+        protected override JToken ApplySingle(string separator, JToken source)
+        {
+            if (source == null || separator == null || source.Type != JTokenType.String)
+            {
+                return null;
+            }
+            // only try to split input strings
+            string inputString = source.ToString();
+            return new JArray(Regex.Split(inputString, separator));
         }
     }
 
-    public static final class rightPad extends Function.ArgDrivenListFunction<string> {
-        @Override
-        protected Optional<object> applyList(string source, List<object> args) {
-
-            return padString( false, source, args );
-        }
-    }
-
-    private static Optional<object> padString( boolean leftPad, string source, List<object> args ) {
-
-        // There is only one path that leads to success and many
-        //  ways for this to fail.   So using a do/while loop
-        //  to make the bailing easy.
-        do {
-
-            if(source == null || args == null ) {
-                break;
+    public abstract class PadFunction : ArgDrivenStringListFunction
+    {
+        protected static JToken PadString(bool leftPad, string source, JArray args)
+        {
+            if (source == null || args == null || args.Count < 2 ||
+                !(args[0].Type == JTokenType.Integer &&
+                  args[1].Type == JTokenType.String))
+            {
+                return null;
             }
 
-            if ( ! ( args.get(0) instanceof Integer &&
-                     args.get(1) instanceof string ) ) {
-                break;
-            }
-
-            Integer width = (Integer) args.get(0);
+            int width = args[0].Value<int>();
 
             // if the width param is stupid; bail
-            if ( width <= 0 || width > 500 ) {
-                break;
+            if (width <= 0 || width > 500)
+            {
+                return null;
             }
 
-            string filler = (string) args.get(1);
+            string filler = args[1].ToString();
 
             // filler can only be a single char
             //  otherwise the math becomes hard
-            if ( filler.Length() != 1 ) {
-                break;
+            if (filler.Length != 1)
+            {
+                return null;
             }
 
             char fillerChar = filler[0];
 
             // if the desired width of the overall padding is smaller than
             //  the source string, then just return the source string.
-            if( width <= source.Length() ) {
-                return Optional.of( source );
+            if (width <= source.Length)
+            {
+                return source;
             }
 
-            int pa.Length = width - source.Length();
-            char[] padArray = new char[pa.Length];
-
-            Arrays.fill( padArray, fillerChar );
-
+            int padLength = width - source.Length;
             StringBuilder sb = new StringBuilder();
 
-            if ( leftPad ) {
-                sb.append( padArray ).append( source );
+            if (leftPad)
+            {
+                sb.Append(fillerChar, padLength).Append(source);
             }
-            else {
-                sb.append( source ).append( padArray );
+            else
+            {
+                sb.Append(source).Append(fillerChar, padLength);
             }
-
-            return Optional.of( sb.toString() );
-
-        } while ( false );
-
-        return Optional.empty();
+            return sb.ToString();
+        }
     }
-}
-#endif
+
+    public class LeftPad : PadFunction
+    {
+        protected override JToken ApplyList(string source, JArray args)
+        {
+            return PadString(true, source, args);
+        }
+    }
+
+    public class RightPad : PadFunction
+    {
+        protected override JToken ApplyList(string source, JArray args)
+        {
+            return PadString(true, source, args);
+        }
+    }
 }

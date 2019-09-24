@@ -39,7 +39,7 @@ namespace Jolt.Net
 
             foreach (var rawKv in rawSpec)
             {
-                var keyStrings = rawKv.Key.Split(new string[] { "\\|" }, StringSplitOptions.None); // unwrap the syntactic sugar of the OR
+                var keyStrings = rawKv.Key.Split('|'); // unwrap the syntactic sugar of the OR
                 foreach (string keyString in keyStrings)
                 {
                     T childSpec = CreateSpec(keyString, rawKv.Value);
@@ -66,6 +66,6 @@ namespace Jolt.Net
          * @param rhsSpec rhs Spec
          * @return Spec object
          */
-        public abstract T CreateSpec(string lhsKey, object rhsSpec);
+        public abstract T CreateSpec(string lhsKey, JToken rhsSpec);
     }
 }

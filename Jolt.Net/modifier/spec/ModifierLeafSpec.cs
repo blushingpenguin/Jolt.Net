@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+using Jolt.Net.Functions;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -24,25 +26,26 @@ namespace Jolt.Net
 
         private readonly List<FunctionEvaluator> _functionEvaluatorList = new List<FunctionEvaluator>();
 
-        public ModifierLeafSpec(string rawJsonKey, object rhsObj, OpMode opMode, Dictionary<string, IFunction> functionsMap) :
+        public ModifierLeafSpec(string rawJsonKey, JToken rhsObj, OpMode opMode, IReadOnlyDictionary<string, IFunction> functionsMap) :
             base(rawJsonKey, opMode)
         {
             FunctionEvaluator functionEvaluator;
 
             // "key": "expression1"
-            if (rhsObj is string s)
+            if (rhsObj.Type == JTokenType.String)
             {
+                string s = rhsObj.ToString();
                 functionEvaluator = BuildFunctionEvaluator(s, functionsMap);
                 _functionEvaluatorList.Add(functionEvaluator);
             }
             // "key": ["expression1", "expression2", "expression3"]
-            else if (rhsObj is List<object> rhsList && rhsList.Count > 0)
+            else if (rhsObj is JArray rhsList && rhsList.Count > 0)
             {
-                foreach (object rhs in rhsList)
+                foreach (var rhs in rhsList)
                 {
-                    if (rhs is string rhsString)
+                    if (rhs.Type == JTokenType.String)
                     {
-                        functionEvaluator = BuildFunctionEvaluator(rhsString, functionsMap);
+                        functionEvaluator = BuildFunctionEvaluator(rhs.ToString(), functionsMap);
                         _functionEvaluatorList.Add(functionEvaluator);
                     }
                     else
@@ -60,24 +63,23 @@ namespace Jolt.Net
             }
         }
 
-        protected override void ApplyElement(string inputKey, OptionalObject inputOptional, MatchedElement thisLevel, WalkedPath walkedPath, Dictionary<string, object> context)
+        protected override void ApplyElement(string inputKey, JToken inputOptional, MatchedElement thisLevel, WalkedPath walkedPath, JObject context)
         {
+            JToken parent = walkedPath.LastElement().TreeRef;
 
-            object parent = walkedPath.LastElement().TreeRef;
+            walkedPath.Add(inputOptional, thisLevel);
 
-            walkedPath.Add(inputOptional.Value, thisLevel);
+            JToken valueOptional = GetFirstAvailable(_functionEvaluatorList, inputOptional, walkedPath, context);
 
-            OptionalObject valueOptional = GetFirstAvailable(_functionEvaluatorList, inputOptional, walkedPath, context);
-
-            if (valueOptional.HasValue)
+            if (valueOptional != null)
             {
-                SetData(parent, thisLevel, valueOptional.Value, _opMode);
+                SetData(parent, thisLevel, valueOptional, _opMode);
             }
 
             walkedPath.RemoveLast();
         }
 
-        private static FunctionEvaluator BuildFunctionEvaluator(string rhs, Dictionary<string, IFunction> functionsMap)
+        private static FunctionEvaluator BuildFunctionEvaluator(string rhs, IReadOnlyDictionary<string, IFunction> functionsMap)
         {
             // "key": "@0" --- evaluate expression then set
             if (!rhs.StartsWith(TemplatrSpecBuilder.FUNCTION))
@@ -108,15 +110,15 @@ namespace Jolt.Net
             }
         }
 
-        private static OptionalObject GetFirstAvailable(List<FunctionEvaluator> functionEvaluatorList, OptionalObject inputOptional, WalkedPath walkedPath, Dictionary<string, object> context)
+        private static JToken GetFirstAvailable(List<FunctionEvaluator> functionEvaluatorList, JToken inputOptional, WalkedPath walkedPath, JObject context)
         {
-            var valueOptional = new OptionalObject();
+            JToken valueOptional = null;
             foreach (FunctionEvaluator functionEvaluator in functionEvaluatorList)
             {
                 try
                 {
                     valueOptional = functionEvaluator.Evaluate(inputOptional, walkedPath, context);
-                    if (valueOptional.HasValue)
+                    if (valueOptional != null)
                     {
                         return valueOptional;
                     }

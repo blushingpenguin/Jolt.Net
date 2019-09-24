@@ -13,12 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jolt.Net
 {
-#if FALSE
+    /**
+     * Standard alphabetical sort, with a special case for keys beginning with "~".
+     */
+    public class JsonKeyComparator : IComparer<string> 
+    {
+        public int Compare(string a, string b)
+        {
+            bool aTilde = a.Length > 0 && a[0] == '~';
+            bool bTilde = b.Length > 0 && b[0] == '~';
+
+            if (aTilde && !bTilde)
+            {
+                return -1;
+            }
+            if (!aTilde && bTilde)
+            {
+                return 1;
+            }
+
+            return a.CompareTo(b);
+        }
+    }
+
     /**
      * Recursively sorts all maps within a JSON object into new sorted LinkedHashMaps so that serialized
      * representations are deterministic.  Useful for debugging and making test fixtures.
@@ -29,72 +53,51 @@ namespace Jolt.Net
      */
     public class Sortr : ITransform
     {
+        private readonly static JsonKeyComparator _jsonKeyComparator = new JsonKeyComparator();
 
-    /**
-     * Makes a "sorted" copy of the input JSON for human readability.
-     *
-     * @param input the JSON object to transform, in plain vanilla Jackson Map<string, object> style
-     */
-    public JObject transform(JObject input)
-    {
-        return sortJson( input );
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static object sortJson( object obj ) {
-        if ( obj instanceof Map ) {
-            return sortMap( (Map<string, object>) obj );
-        } else if ( obj instanceof List ) {
-            return ordered( (List<object>) obj );
-        } else {
-            return obj;
+        /**
+         * Makes a "sorted" copy of the input JSON for human readability.
+         *
+         * @param input the JSON object to transform, in plain vanilla Jackson Map<string, object> style
+         */
+        public JToken Transform(JToken input)
+        {
+            return SortJson(input);
         }
-    }
 
-    private static Map<string, object> sortMap( Map<string, object> map ) {
-        List<string> keys = new ArrayList<>( map.keySet() );
-        Collections.sort( keys, jsonKeyComparator );
-
-        LinkedHashMap<string,object> orderedMap = new LinkedHashMap<>( map.size() );
-        for ( string key : keys ) {
-            orderedMap.put( key, sortJson( map.get(key) ) );
-        }
-        return orderedMap;
-    }
-
-    private static List<object> ordered( List<object> list ) {
-        // Don't sort the list because that would change intent, but sort its components
-        // Additionally, make a copy of the List in-case the provided list is Immutable / Unmodifiable
-        List<object> newList = new ArrayList<>( list.size() );
-        for ( object obj : list ) {
-            newList.add( sortJson( obj ) );
-        }
-        return newList;
-    }
-
-    private final static JsonKeyComparator jsonKeyComparator = new JsonKeyComparator();
-
-    /**
-     * Standard alphabetical sort, with a special case for keys beginning with "~".
-     */
-    private static class JsonKeyComparator implements Comparator<string> {
-
-        @Override
-        public int compare(string a, string b) {
-
-            boolean aTilde = ( a.Length() > 0 && a[0] == '~' );
-            boolean bTilde = ( b.Length() > 0 && b[0] == '~' );
-
-            if ( aTilde && ! bTilde ) {
-                return -1;
+        public static JToken SortJson(JToken value)
+        {
+            if (value is JObject obj)
+            {
+                return SortMap(obj);
             }
-            if ( ! aTilde && bTilde ) {
-                return 1;
+            if (value is JArray arr)
+            {
+                return Ordered(arr);
             }
+            return value;
+        }
 
-            return a.compareTo( b );
+        private static JObject SortMap(JObject map)
+        {
+            var orderedMap = new JObject();
+            foreach (var prop in map.Properties().OrderBy(p => p.Name, _jsonKeyComparator))
+            {
+                orderedMap.Add(prop.Name, SortJson(prop.Value));
+            }
+            return orderedMap;
+        }
+
+        private static JArray Ordered(JArray list)
+        {
+            // Don't sort the list because that would change intent, but sort its components
+            // Additionally, make a copy of the List in-case the provided list is Immutable / Unmodifiable
+            var newList = new JArray();
+            foreach (var entry in list)
+            {
+                newList.Add(SortJson(entry));
+            }
+            return newList;
         }
     }
-}
-#endif
 }

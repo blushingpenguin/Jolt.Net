@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -58,19 +59,19 @@ namespace Jolt.Net
         /**
          * Determines if an input is compatible with current DataType
          */
-        public abstract bool IsCompatible(object input);
+        public abstract bool IsCompatible(JToken input);
 
         /**
          * MAP and LIST types overrides this method to return appropriate new map or list
          */
-        protected abstract object CreateValue();
+        protected abstract JToken CreateValue();
 
         /**
          * LIST overrides this method to expand the source (list) such that in can support
          * an index specified in spec that is outside the range input list, returns original size
          * of the input
          */
-        public int? Expand(object source)
+        public virtual int? Expand(JToken source)
         {
             throw new InvalidOperationException("Expand not supported in " + GetType().Name + " Type");
         }
@@ -83,7 +84,7 @@ namespace Jolt.Net
          * @param opMode     to determine if this write operation is allowed
          * @return newly created object
          */
-        public object Create(string keyOrIndex, WalkedPath walkedPath, OpMode opMode)
+        public JToken Create(string keyOrIndex, WalkedPath walkedPath, OpMode opMode)
         {
             object parent = walkedPath.LastElement().TreeRef;
             int? origSizeOptional = walkedPath.LastElement().OrigSize;
@@ -91,12 +92,12 @@ namespace Jolt.Net
             {
                 index = -1;
             }
-            object value = null;
-            if (parent is Dictionary<string, object> map && opMode.IsApplicable(map, keyOrIndex))
+            JToken value = null;
+            if (parent is JObject map && opMode.IsApplicable(map, keyOrIndex))
             {
                 map[keyOrIndex] = CreateValue();
             }
-            else if (parent is List<object> list && opMode.IsApplicable(list, index, origSizeOptional.Value))
+            else if (parent is JArray list && opMode.IsApplicable(list, index, origSizeOptional.Value))
             {
                 list[index] = CreateValue();
             }
@@ -116,11 +117,11 @@ namespace Jolt.Net
             _maxIndexFromSpec = maxIndexFromSpec;
         }
 
-        protected override object CreateValue() => new List<object>();
+        protected override JToken CreateValue() => new JArray();
 
-        public int? expand(object input)
+        public override int? Expand(JToken input)
         {
-            var source = (List<object>)input;
+            var source = (JArray)input;
             int reqIndex = _maxIndexFromSpec;
             int currLastIndex = source.Count - 1;
             int origSize = currLastIndex + 1;
@@ -134,9 +135,9 @@ namespace Jolt.Net
             return origSize;
         }
 
-        public override bool IsCompatible(object input)
+        public override bool IsCompatible(JToken input)
         {
-            return input == null || input is List<object>;
+            return input == null || input is JArray;
         }
     }
 
@@ -145,10 +146,10 @@ namespace Jolt.Net
      */
     public class MAP : DataType
     {
-        protected override object CreateValue() => new Dictionary<string, object>();
+        protected override JToken CreateValue() => new JObject();
 
-        public override bool IsCompatible(object input) =>
-            input == null || input is Dictionary<string, object>;
+        public override bool IsCompatible(JToken input) =>
+            input == null || input is JObject;
     }
 
     /**
@@ -156,9 +157,9 @@ namespace Jolt.Net
      */
     public class RUNTIME : DataType
     {
-        public override bool IsCompatible(object input) =>
+        public override bool IsCompatible(JToken input) =>
             input != null;
-        protected override object CreateValue() =>
+        protected override JToken CreateValue() =>
             throw new InvalidOperationException("Cannot create for RUNTIME Type");
     }
 }

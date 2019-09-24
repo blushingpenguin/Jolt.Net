@@ -221,7 +221,7 @@ namespace Jolt.Net
          * @param input JSON object to have defaults applied to. This will be modified.
          * @return the modified input
          */
-        public override JObject Transform(JObject input)
+        public JToken Transform(JToken input)
         {
             if (input == null)
             {

@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jolt.Net
 {
@@ -34,7 +36,7 @@ namespace Jolt.Net
          *
          * @param inputMap : Input map from which the spec key needs to be removed.
          */
-        public override List<string> ApplyToMap(Dictionary<string, object> inputMap)
+        public override List<string> ApplyToMap(JObject inputMap)
         {
             if (inputMap == null)
             {
@@ -54,14 +56,12 @@ namespace Jolt.Net
             }
             else if (_pathElement is IStarPathElement star)
             {
-
                 // if we are a wildcard, check each input key to see if it matches us
-                foreach (string key in inputMap.Keys)
+                foreach (var prop in inputMap.Properties())
                 {
-
-                    if (star.StringMatch(key))
+                    if (star.StringMatch(prop.Name))
                     {
-                        keysToBeRemoved.Add(key);
+                        keysToBeRemoved.Add(prop.Name);
                     }
                 }
             }
@@ -72,23 +72,18 @@ namespace Jolt.Net
         /**
          * @param inputList : Input List from which the spec key needs to be removed.
          */
-        public override List<int?> ApplyToList(List<object> inputList)
+        public override IEnumerable<int> ApplyToList(JArray inputList)
         {
             if (inputList == null)
             {
-                return null;
             }
-
-            if (_pathElement is LiteralPathElement)
+            else if (_pathElement is LiteralPathElement)
             {
-
                 int? pathElementInt = GetNonNegativeIntegerFromLiteralPathElement();
 
                 if (pathElementInt.HasValue && pathElementInt.Value < inputList.Count)
                 {
-                    var result = new List<int?>();
-                    result.Add(pathElementInt);
-                    return result;
+                    yield return pathElementInt.Value;
                 }
             }
             else if (_pathElement is StarAllPathElement)
@@ -96,18 +91,14 @@ namespace Jolt.Net
                 // To be clear, this is kinda silly.
                 // If you just wanted to remove the whole list, you could have just
                 //  directly removed it, instead of stepping into it and using the "*".
-                var toReturn = new List<int?>(inputList.Count);
                 for (int index = 0; index < inputList.Count; index++)
                 {
-                    toReturn.Add(index);
+                    yield return index;
                 }
-
-                return toReturn;
             }
 
             // else the pathElement is some other kind which is not supported when running
             //  against arrays, aka "tuna*" makes no sense against a list.
-            return new List<int?>();
         }
     }
 }

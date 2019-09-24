@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -40,25 +41,37 @@ namespace Jolt.Net
             new AllLiteralsWithComputedExecutionStrategy();
 
 
-        public abstract void ProcessMap(IOrderedCompositeSpec spec, Dictionary<string, object> inputMap, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context);
-        public abstract void ProcessList(IOrderedCompositeSpec spec, List<object> inputList, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context);
-        public abstract void ProcessScalar(IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context);
+        public abstract void ProcessMap(IOrderedCompositeSpec spec, JObject inputMap, WalkedPath walkedPath, JObject output, JObject context);
+        public abstract void ProcessList(IOrderedCompositeSpec spec, JArray inputList, WalkedPath walkedPath, JObject output, JObject context);
+        public abstract void ProcessScalar(IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, JObject output, JObject context);
 
-        public void Process(IOrderedCompositeSpec spec, OptionalObject inputOptional, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context)
+        public static string ToString(JToken token)
         {
-            object input = inputOptional.Value;
-            if (input is Dictionary<string, object> map)
+            if (token == null)
+            {
+                return "null";
+            }
+            if (token.Type == JTokenType.Boolean)
+            {
+                return token.Value<bool>() ? "true" : "false";
+            }
+            return token.ToString();
+        }
+
+        public void Process(IOrderedCompositeSpec spec, JToken input, WalkedPath walkedPath, JObject output, JObject context)
+        {
+            if (input is JObject map)
             {
                 ProcessMap(spec, map, walkedPath, output, context);
             }
-            else if (input is List<object> list)
+            else if (input is JArray list)
             {
                 ProcessList(spec, list, walkedPath, output, context);
             }
             else if (input != null)
             {
                 // if not a map or list, must be a scalar
-                ProcessScalar(spec, input.ToString(), walkedPath, output, context);
+                ProcessScalar(spec, ToString(input), walkedPath, output, context);
             }
         }
 
@@ -72,7 +85,7 @@ namespace Jolt.Net
          *   n is number of input keys
          *   c is number of computed children
          */
-        protected static void ApplyKeyToLiteralAndComputed<T>(T spec, string subKeyStr, OptionalObject subInputOptional, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context)
+        protected static void ApplyKeyToLiteralAndComputed<T>(T spec, string subKeyStr, JToken subInputOptional, WalkedPath walkedPath, JObject output, JObject context)
             where T : IOrderedCompositeSpec
         {
             // if the subKeyStr found a literalChild, then we do not have to try to match any of the computed ones
@@ -87,7 +100,7 @@ namespace Jolt.Net
             }
         }
 
-        protected static void ApplyKeyToComputed<T>(IReadOnlyList<T> computedChildren, WalkedPath walkedPath, Dictionary<string, object> output, string subKeyStr, OptionalObject subInputOptional, Dictionary<string, object> context)
+        protected static void ApplyKeyToComputed<T>(IReadOnlyList<T> computedChildren, WalkedPath walkedPath, JObject output, string subKeyStr, JToken subInputOptional, JObject context)
             where T : IBaseSpec
         {
             // Iterate through all the getComputedChildren() until we find a match
@@ -111,20 +124,19 @@ namespace Jolt.Net
          *
          *  More specifically, the assumption here is that the set of literalChildren is smaller than the input "keyset".
          */
-        public override void ProcessMap(IOrderedCompositeSpec spec, Dictionary<string, object> inputMap, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context)
+        public override void ProcessMap(IOrderedCompositeSpec spec, JObject inputMap, WalkedPath walkedPath, JObject output, JObject context)
         {
             foreach (var kv in spec.GetLiteralChildren())
             {
                 // Do not work if the value is missing in the input map
                 if (inputMap.TryGetValue(kv.Key, out var inputValue))
                 {
-                    var subInputOptional = new OptionalObject(kv.Value);
-                    kv.Value.Apply(kv.Key, subInputOptional, walkedPath, output, context );
+                    kv.Value.Apply(kv.Key, inputValue, walkedPath, output, context );
                 }
             }
         }
 
-        public override void ProcessList(IOrderedCompositeSpec spec, List<object> inputList, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context)
+        public override void ProcessList(IOrderedCompositeSpec spec, JArray inputList, WalkedPath walkedPath, JObject output, JObject context)
         {
             int? originalSize = walkedPath.LastElement().OrigSize;
             foreach (var kv in spec.GetLiteralChildren())
@@ -136,13 +148,15 @@ namespace Jolt.Net
                     // Do not work if the index is outside of the input list
                     keyInt < inputList.Count)
                 {
-                    object subInput = inputList[keyInt];
-                    OptionalObject subInputOptional;
-                    if (subInput == null && originalSize.HasValue && keyInt >= originalSize.Value) {
-                        subInputOptional = new OptionalObject();
+                    // XXX: does this make sense? can you have a literal null in JArray?
+                    JToken subInput = inputList[keyInt];
+                    JToken subInputOptional;
+                    if (subInput == null && originalSize.HasValue && keyInt >= originalSize.Value)
+                    {
+                        subInputOptional = null;
                     }
                     else {
-                        subInputOptional = new OptionalObject();
+                        subInputOptional = subInput;
                     }
 
                     kv.Value.Apply(kv.Key, subInputOptional, walkedPath, output, context);
@@ -150,11 +164,11 @@ namespace Jolt.Net
             }
         }
 
-        public override void ProcessScalar(IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessScalar(IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, JObject output, JObject context)
         {
             if (spec.GetLiteralChildren().TryGetValue(scalarInput, out var literalChild))
             {
-                literalChild.Apply(scalarInput, new OptionalObject(), walkedPath, output, context);
+                literalChild.Apply(scalarInput, null, walkedPath, output, context);
             }
         }
     }
@@ -166,27 +180,23 @@ namespace Jolt.Net
      */
     public class AllLiteralsExecutionStategy : AvailableLiteralsExecutionStrategy
     {
-        public override void ProcessMap(IOrderedCompositeSpec spec, Dictionary<string, object> inputMap, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessMap(IOrderedCompositeSpec spec, JObject inputMap, WalkedPath walkedPath, JObject output, JObject context)
         {
             foreach (var kv in spec.GetLiteralChildren())
             {
                 // if the input in not available in the map us null or else get value,
                 // then lookup and place a defined value from spec there
-                var subInputOptional = new OptionalObject();
-                if (inputMap.TryGetValue(kv.Key, out var input))
-                {
-                    subInputOptional = new OptionalObject(input);
-                }
-                kv.Value.Apply(kv.Key, subInputOptional, walkedPath, output, context );
+                inputMap.TryGetValue(kv.Key, out var input);
+                kv.Value.Apply(kv.Key, input, walkedPath, output, context );
             }
         }
 
-        public override void ProcessList(IOrderedCompositeSpec spec, List<object> inputList, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessList(IOrderedCompositeSpec spec, JArray inputList, WalkedPath walkedPath, JObject output, JObject context)
         {
             int? originalSize = walkedPath.LastElement().OrigSize;
             foreach (var kv in spec.GetLiteralChildren())
             {
-                var subInputOptional = new OptionalObject();
+                JToken subInputOptional = null;
                 // If the data is an Array, but the spec keys are Non-Integer Strings,
                 //  we are annoyed, but we don't stop the whole transform.
                 // Just this part of the Transform won't work.
@@ -195,9 +205,10 @@ namespace Jolt.Net
                 {
                     // if the input in not available in the list use null or else get value,
                     // then lookup and place a default value as defined in spec there
-                    object subInput = inputList[keyInt];
-                    if ( subInput != null || !originalSize.HasValue || keyInt < originalSize.Value ) {
-                        subInputOptional = new OptionalObject( subInput );
+                    JToken subInput = inputList[keyInt];
+                    if ( subInput != null || !originalSize.HasValue || keyInt < originalSize.Value )
+                    {
+                        subInputOptional = subInput;
                     }
                 }
                 kv.Value.Apply(kv.Key, subInputOptional, walkedPath, output, context);
@@ -211,36 +222,39 @@ namespace Jolt.Net
      */
     public class ComputedExecutionStrategy : ExecutionStrategy
     {
-        public override void ProcessMap(IOrderedCompositeSpec spec, Dictionary<string, object> inputMap, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessMap(IOrderedCompositeSpec spec, JObject inputMap, WalkedPath walkedPath, JObject output, JObject context )
         {
             // Iterate over the whole entrySet rather than the keyset with follow on gets of the values
             foreach (var inputEntry in inputMap)
             {
-                ApplyKeyToComputed(spec.GetComputedChildren(), walkedPath, output, inputEntry.Key, new OptionalObject(inputEntry.Value), context );
+                ApplyKeyToComputed(spec.GetComputedChildren(), walkedPath, output, inputEntry.Key, inputEntry.Value, context );
             }
         }
 
-        public override void ProcessList(IOrderedCompositeSpec spec, List<object> inputList, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessList(IOrderedCompositeSpec spec, JArray inputList, WalkedPath walkedPath, JObject output, JObject context )
         {
             int? originalSize = walkedPath.LastElement().OrigSize;
             for (int index = 0; index < inputList.Count; index++)
             {
-                object subInput = inputList[index];
+                JToken subInput = inputList[index];
                 string subKeyStr = index.ToString();
-                OptionalObject subInputOptional;
-                if ( subInput == null && originalSize.HasValue && index >= originalSize.Value ) {
-                    subInputOptional = new OptionalObject();
+                JToken subInputOptional;
+                if (subInput == null && originalSize.HasValue && index >= originalSize.Value)
+                {
+                    subInputOptional = null;
                 }
-                else {
-                    subInputOptional = new OptionalObject(subInput);
+                else
+                {
+                    subInputOptional = subInput;
                 }
 
                 ApplyKeyToComputed( spec.GetComputedChildren(), walkedPath, output, subKeyStr, subInputOptional, context );
             }
         }
 
-        public override void ProcessScalar(IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context ) {
-            ApplyKeyToComputed( spec.GetComputedChildren(), walkedPath, output, scalarInput, new OptionalObject(), context );
+        public override void ProcessScalar(IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, JObject output, JObject context)
+        {
+            ApplyKeyToComputed( spec.GetComputedChildren(), walkedPath, output, scalarInput, null, context );
         }
     }
 
@@ -250,38 +264,41 @@ namespace Jolt.Net
      */
     public class ConflictExecutionStrategy : ExecutionStrategy
     {
-        public override void ProcessMap( IOrderedCompositeSpec spec, Dictionary<string, object> inputMap, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context ) {
+        public override void ProcessMap( IOrderedCompositeSpec spec, JObject inputMap, WalkedPath walkedPath, JObject output, JObject context)
+        {
 
             // Iterate over the whole entrySet rather than the keyset with follow on gets of the values
             foreach (var inputEntry in inputMap)
             {
-                ApplyKeyToLiteralAndComputed( spec, inputEntry.Key, new OptionalObject(inputEntry.Value), walkedPath, output, context );
+                ApplyKeyToLiteralAndComputed( spec, inputEntry.Key, inputEntry.Value, walkedPath, output, context );
             }
         }
 
-        public override void ProcessList(IOrderedCompositeSpec spec, List<object> inputList, WalkedPath walkedPath, 
-            Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessList(IOrderedCompositeSpec spec, JArray inputList, WalkedPath walkedPath,
+            JObject output, JObject context)
         {
             int? originalSize = walkedPath.LastElement().OrigSize;
             for (int index = 0; index < inputList.Count; index++)
             {
-                object subInput = inputList[index];
+                var subInput = inputList[index];
                 string subKeyStr = index.ToString();
-                OptionalObject subInputOptional;
-                if ( subInput == null && originalSize.HasValue && index >= originalSize ) {
-                    subInputOptional = new OptionalObject();
+                JToken subInputOptional;
+                if (subInput == null && originalSize.HasValue && index >= originalSize)
+                {
+                    subInputOptional = null;
                 }
-                else {
-                    subInputOptional = new OptionalObject(subInput);
+                else
+                {
+                    subInputOptional = subInput;
                 }
 
                 ApplyKeyToLiteralAndComputed( spec, subKeyStr, subInputOptional, walkedPath, output, context );
             }
         }
 
-        public override void ProcessScalar( IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessScalar(IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, JObject output, JObject context)
         {
-            ApplyKeyToLiteralAndComputed( spec, scalarInput, new OptionalObject(), walkedPath, output, context );
+            ApplyKeyToLiteralAndComputed(spec, scalarInput, null, walkedPath, output, context);
         }
     }
 
@@ -291,19 +308,19 @@ namespace Jolt.Net
      */
     public class AvailableLiteralsWithComputedExecutionStrategy : ExecutionStrategy
     {        
-        public override void ProcessMap( IOrderedCompositeSpec spec, Dictionary<string, object> inputMap, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessMap(IOrderedCompositeSpec spec, JObject inputMap, WalkedPath walkedPath, JObject output, JObject context)
         {
-            ExecutionStrategy.AvailableLiterals.ProcessMap( spec, inputMap, walkedPath, output, context );
-            ExecutionStrategy.Computed.ProcessMap( spec, inputMap, walkedPath, output, context );
+            ExecutionStrategy.AvailableLiterals.ProcessMap(spec, inputMap, walkedPath, output, context);
+            ExecutionStrategy.Computed.ProcessMap(spec, inputMap, walkedPath, output, context);
         }
 
-        public override void ProcessList(IOrderedCompositeSpec spec, List<object> inputList, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessList(IOrderedCompositeSpec spec, JArray inputList, WalkedPath walkedPath, JObject output, JObject context)
         {
             ExecutionStrategy.AvailableLiterals.ProcessList( spec, inputList, walkedPath, output, context );
             ExecutionStrategy.Computed.ProcessList( spec, inputList, walkedPath, output, context );
         }
 
-        public override void ProcessScalar(IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessScalar(IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, JObject output, JObject context)
         {
             ExecutionStrategy.AvailableLiterals.ProcessScalar( spec, scalarInput, walkedPath, output, context );
             ExecutionStrategy.Computed.ProcessScalar( spec, scalarInput, walkedPath, output, context );
@@ -312,19 +329,19 @@ namespace Jolt.Net
 
     public class AllLiteralsWithComputedExecutionStrategy : ExecutionStrategy
     {
-        public override void ProcessMap(IOrderedCompositeSpec spec, Dictionary<string, object> inputMap, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessMap(IOrderedCompositeSpec spec, JObject inputMap, WalkedPath walkedPath, JObject output, JObject context )
         {
             ExecutionStrategy.AllLiterals.ProcessMap( spec, inputMap, walkedPath, output, context );
             ExecutionStrategy.Computed.ProcessMap( spec, inputMap, walkedPath, output, context );
         }
 
-        public override void ProcessList(IOrderedCompositeSpec spec, List<object> inputList, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context )
+        public override void ProcessList(IOrderedCompositeSpec spec, JArray inputList, WalkedPath walkedPath, JObject output, JObject context )
         {
             ExecutionStrategy.AllLiterals.ProcessList( spec, inputList, walkedPath, output, context );
             ExecutionStrategy.Computed.ProcessList( spec, inputList, walkedPath, output, context );
         }
 
-        public override void ProcessScalar(IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context)
+        public override void ProcessScalar(IOrderedCompositeSpec spec, string scalarInput, WalkedPath walkedPath, JObject output, JObject context)
         {
             ExecutionStrategy.AllLiterals.ProcessScalar( spec, scalarInput, walkedPath, output, context );
             ExecutionStrategy.Computed.ProcessScalar( spec, scalarInput, walkedPath, output, context );

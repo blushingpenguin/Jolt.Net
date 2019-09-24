@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -192,63 +193,57 @@ namespace Jolt.Net
          * @param walkedPath WalkedPath to evaluate against
          * @return The data specified by this TransposePathElement.
          */
-        public OptionalObject ObjectEvaluate(WalkedPath walkedPath)
+        public JToken ObjectEvaluate(WalkedPath walkedPath)
         {
             // Grap the data we need from however far up the tree we are supposed to go
             PathStep pathStep = walkedPath.ElementFromEnd(_upLevel);
 
             if (pathStep == null)
             {
-                return new OptionalObject();
+                return null;
             }
 
-            object treeRef = pathStep.TreeRef;
+            var treeRef = pathStep.TreeRef;
 
             // Now walk down from that level using the subPathReader
             if (_subPathReader == null)
             {
-                return new OptionalObject(treeRef);
+                return treeRef;
             }
             else
             {
-                return new OptionalObject(_subPathReader.Read(treeRef, walkedPath));
+                return _subPathReader.Read(treeRef, walkedPath);
             }
         }
 
         public string Evaluate(WalkedPath walkedPath)
         {
-            var dataFromTranspose = ObjectEvaluate(walkedPath);
+            var data = ObjectEvaluate(walkedPath);
 
-            if (dataFromTranspose.HasValue) {
-
-                object data = dataFromTranspose.Value;
-
+            if (data != null)
+            {
                 // Coerce a number into a string
-                if (data is int val)
+                if (data.Type == JTokenType.Integer)
                 {
                     // the idea here being we are looking for an array index value
-                    return val.ToString();
+                    return data.ToString();
                 }
 
                 // Coerce a boolean into a string
-                if (data is bool bval)
+                if (data.Type == JTokenType.Boolean)
                 {
-                    return bval ? "true" : "false";
+                    return data.Value<bool>() ? "true" : "false";
                 }
 
-                if (data == null || !(data is string sval))
+                if (data.Type == JTokenType.String)
                 {
-                    // If this output path has a TransposePathElement, and when we evaluate it
-                    //  it does not resolve to a string, then return null
-                    return null;
+                    return data.ToString();
                 }
 
-                return sval;
+                // If this output path has a TransposePathElement, and when we evaluate it
+                //  it does not resolve to a string, then return null
             }
-            else
-            {
-                return null;
-            }
+            return null;
         }
 
         public MatchedElement Match(string dataKey, WalkedPath walkedPath)

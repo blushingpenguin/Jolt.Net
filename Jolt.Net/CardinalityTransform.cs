@@ -200,20 +200,19 @@ namespace Jolt.Net
          *
          * @throws com.bazaarvoice.jolt.exception.SpecException for a malformed spec
          */
-        public CardinalityTransform(object spec)
+        public CardinalityTransform(JToken spec)
         {
             if (spec == null)
             {
                 throw new SpecException("CardinalityTransform expected a spec of Map type, got 'null'.");
             }
-            if (!(spec is Dictionary<string, object> dic))
+            if (!(spec is JObject dic))
             {
                 throw new SpecException("CardinalityTransform expected a spec of Map type, got " + spec.GetType().Name);
             }
 
             _rootSpec = new CardinalityCompositeSpec(ROOT_KEY, dic);
         }
-
 
         /**
          * Applies the Cardinality transform.
@@ -223,9 +222,9 @@ namespace Jolt.Net
          * @throws com.bazaarvoice.jolt.exception.TransformException for a malformed spec or if there are issues during
          * the transform
          */
-        public override JObject Transform(JObject input)
+        public JToken Transform(JToken input)
         {
-            _rootSpec.Apply(ROOT_KEY, new OptionalObject(input), new WalkedPath(), null, null);
+            _rootSpec.Apply(ROOT_KEY, input, new WalkedPath(), null, null);
 
             return input;
         }

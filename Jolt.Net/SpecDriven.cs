@@ -35,6 +35,5 @@ namespace Jolt.Net
     public abstract class SpecDriven
     {
         public static string ROOT_KEY { get; } = "root";
-        public abstract JObject Transform(JObject input);
     }
 }

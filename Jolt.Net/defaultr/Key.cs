@@ -50,7 +50,7 @@ namespace Jolt.Net
                 }
                 else
                 {
-                    result.Add(new MapKey(kv.Key, (JObject)kv.Value)); // this will recursively call processSpec if needed
+                    result.Add(new MapKey(kv.Key, kv.Value)); // this will recursively call processSpec if needed
                 }
             }
 
@@ -70,7 +70,7 @@ namespace Jolt.Net
         private int _outputArraySize = -1;
 
         protected HashSet<Key> _children = null;
-        protected object _literalValue = null;
+        protected JToken _literalValue = null;
 
         protected string _rawKey;
         protected List<string> _keyStrings;
@@ -106,7 +106,7 @@ namespace Jolt.Net
             // Spec is string -> Map   or   string -> Literal only
             if (spec.Type == JTokenType.Object)
             {
-                var children = ProcessSpec(IsArrayOutput(), (JObject)spec);
+                _children = ProcessSpec(IsArrayOutput(), (JObject)spec);
 
                 if (IsArrayOutput())
                 {
@@ -133,19 +133,21 @@ namespace Jolt.Net
          *  the defaultee wasn't null, it was null and we created it, OR there was
          *  a mismatch between the Defaultr Spec and the input, and we didn't recurse.
          */
-        public void ApplyChildren(object defaultee)
+        public void ApplyChildren(JToken defaultee)
         {
-
-            if ( defaultee == null ) {
+            if ( defaultee == null ) 
+            {
                 throw new TransformException( "Defaultee should never be null when " +
                         "passed to the applyChildren method." );
             }
 
             // This has nothing to do with this being an ArrayKey or MapKey, instead this is about
             //  this key being the parent of an Array in the output.
-            if (IsArrayOutput() && defaultee is List<object> defaultList) {
+            if (IsArrayOutput() && defaultee is JArray defaultList)
+            {
                 // Extend the defaultee list if needed
-                for ( int index = defaultList.Count - 1; index < GetOutputArraySize(); index++ ) {
+                for ( int index = defaultList.Count - 1; index < GetOutputArraySize(); index++ )
+                {
                     defaultList.Add( null );
                 }
             }
@@ -168,7 +170,7 @@ namespace Jolt.Net
          *
          * If this Key is a WildCard key, this may apply to many entries in the container.
          */
-        protected abstract void ApplyChild(object container);
+        protected abstract void ApplyChild(JToken container);
 
         public int GetOrCount() => _orCount;
 
@@ -178,15 +180,15 @@ namespace Jolt.Net
 
         public int GetOutputArraySize() => _outputArraySize;
 
-        public object CreateOutputContainerObject()
+        public JToken CreateOutputContainerObject()
         {
             if ( IsArrayOutput() )
             {
-                return new List<object>();
+                return new JArray();
             }
             else
             {
-                return new Dictionary<string, object>();
+                return new JObject();
             }
         }
 

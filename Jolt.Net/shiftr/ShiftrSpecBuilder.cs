@@ -21,7 +21,7 @@ namespace Jolt.Net
 {
     public class ShiftrSpecBuilder : SpecBuilder<ShiftrSpec>
     {
-        public override ShiftrSpec CreateSpec(string keyString, object rawRhs)
+        public override ShiftrSpec CreateSpec(string keyString, JToken rawRhs)
         {
             if (rawRhs is JObject map) 
             {

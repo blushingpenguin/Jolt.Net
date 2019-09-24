@@ -59,27 +59,32 @@ namespace Jolt.Net
             // s = s1 -> 0
             // s > s1 -> 1
 
-            if ( ops == ops1 ) {
+            if (ops == ops1)
+            {
                 return 0;
             }
 
-            if ( OPS.STAR == ops ) {
+            if (OPS.STAR == ops)
+            {
                 return 1;
             }
-            if ( OPS.LITERAL == ops ) {
+            if (OPS.LITERAL == ops)
+            {
                 return -1;
             }
 
             // if we get here, "ops" has to equal OR
-            if ( OPS.STAR == ops1) {
+            if (OPS.STAR == ops1)
+            {
                 return -1;
             }
-            if ( OPS.LITERAL == ops1 ) {
+            if (OPS.LITERAL == ops1)
+            {
                 return 1;
             }
 
             // both are ORs, should never get here
-            throw new InvalidOperationException( "Someone has added an op type without changing this method." );
+            throw new InvalidOperationException("Someone has added an op type without changing this method.");
         }
     }
 }

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,7 +51,7 @@ namespace Jolt.Net
         {
             _traversr = new SimpleTraversr(humanReadablePath);
 
-            string[] keysArray = humanReadablePath.Split(new string[] { "\\." }, StringSplitOptions.None);
+            string[] keysArray = humanReadablePath.Split('.');
 
             // extract the 3 from "[3]", but don't mess with "[]"
             for (int index = 0; index < keysArray.Length; index++)
@@ -69,7 +70,7 @@ namespace Jolt.Net
          * @param tree tree of Map and List JSON structure to navigate
          * @return the object you wanted, or null if the object or any step along the path to it were not there
          */
-        public OptionalObject Get(object tree)
+        public JToken Get(JToken tree)
         {
             return _traversr.Get(tree, _keys);
         }
@@ -79,7 +80,7 @@ namespace Jolt.Net
          * @param data JSON style data object you want to set
          * @return returns the data object if successfully set, otherwise null if there was a problem walking the path
          */
-        public OptionalObject Set(object tree, object data)
+        public JToken Set(JToken tree, JToken data)
         {
             return _traversr.Set(tree, _keys, data);
         }
@@ -88,7 +89,7 @@ namespace Jolt.Net
          * @param tree tree of Map and List JSON structure to navigate
          * @return removes and returns the data object if it was able to successfully navigate to it and remove it.
          */
-        public OptionalObject Remove(object tree)
+        public JToken Remove(JToken tree)
         {
             return _traversr.Remove(tree, _keys);
         }

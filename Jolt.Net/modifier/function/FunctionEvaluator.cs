@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+using Jolt.Net.Functions;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -44,9 +46,9 @@ namespace Jolt.Net
             _functionArgs = functionArgs;
         }
 
-        public OptionalObject Evaluate(OptionalObject inputOptional, WalkedPath walkedPath, Dictionary<string, object> context)
+        public JToken Evaluate(JToken inputOptional, WalkedPath walkedPath, JObject context)
         {
-            OptionalObject valueOptional = new OptionalObject();
+            JToken valueOptional = null;
             try
             {
                 // "key": "@0", "key": literal
@@ -60,7 +62,7 @@ namespace Jolt.Net
                 else if (_functionArgs.Length == 1)
                 {
                     var evaluatedArgValue = _functionArgs[0].EvaluateArg(walkedPath, context);
-                    valueOptional = evaluatedArgValue.HasValue ? _function.Apply(evaluatedArgValue.Value) : _function.Apply();
+                    valueOptional = evaluatedArgValue != null ? _function.Apply(evaluatedArgValue) : _function.Apply();
                 }
                 // "key": "=abs(@(1,&0),-1,-3)"
                 // this is more complicated case! if args is an array, after evaluation we cannot pass a missing value wrapped in
@@ -68,7 +70,7 @@ namespace Jolt.Net
                 // upto the implementer to interpret the value. Ideally we can almost always pass a list straight from input.
                 else if (_functionArgs.Length > 1)
                 {
-                    object[] evaluatedArgs = EvaluateArgsValue(_functionArgs, context, walkedPath);
+                    var evaluatedArgs = EvaluateArgsValue(_functionArgs, context, walkedPath);
                     valueOptional = _function.Apply(evaluatedArgs);
                 }
                 //
@@ -80,7 +82,7 @@ namespace Jolt.Net
                 else
                 {
                     // pass current value as arg if present
-                    valueOptional = inputOptional.HasValue ? _function.Apply(inputOptional.Value) : _function.Apply();
+                    valueOptional = inputOptional != null ? _function.Apply(inputOptional) : _function.Apply();
                 }
             }
             catch (Exception)
@@ -91,14 +93,13 @@ namespace Jolt.Net
 
         }
 
-        private static object[] EvaluateArgsValue(FunctionArg[] functionArgs, Dictionary<string, object> context, WalkedPath walkedPath)
+        private static JToken[] EvaluateArgsValue(FunctionArg[] functionArgs, JObject context, WalkedPath walkedPath)
         {
-            object[] evaluatedArgs = new object[functionArgs.Length];
+            JToken[] evaluatedArgs = new JToken[functionArgs.Length];
             for (int i = 0; i < functionArgs.Length; i++)
             {
                 FunctionArg arg = functionArgs[i];
-                OptionalObject evaluatedValue = arg.EvaluateArg(walkedPath, context);
-                evaluatedArgs[i] = evaluatedValue.Value;
+                evaluatedArgs[i] = arg.EvaluateArg(walkedPath, context);
             }
             return evaluatedArgs;
         }

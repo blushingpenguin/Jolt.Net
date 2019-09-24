@@ -100,7 +100,6 @@ namespace Jolt.Net
          */
         private class ContextualTransformAdapter : IContextualTransform
         {
-
             private readonly ITransform _transform;
 
             public ContextualTransformAdapter(ITransform transform)
@@ -108,7 +107,7 @@ namespace Jolt.Net
                 _transform = transform;
             }
 
-            public JObject Transform(JObject input, Dictionary<string, object> context)
+            public JToken Transform(JToken input, JObject context)
             {
                 return _transform.Transform(input);
             }
@@ -174,12 +173,12 @@ namespace Jolt.Net
          * @throws com.bazaarvoice.jolt.exception.TransformException if the specification is malformed, an operation is not
          *                       found, or if one of the specified transforms throws an exception.
          */
-        public JObject Transform(JObject input, Dictionary<string, object> context)
+        public JToken Transform(JToken input, JObject context)
         {
             return DoTransform(_transformsList, input, context);
         }
 
-        public JObject Transform(JObject input)
+        public JToken Transform(JToken input)
         {
             return DoTransform(_transformsList, input, null);
         }
@@ -192,7 +191,7 @@ namespace Jolt.Net
          * @param input the input data to transform
          * @param to transform from the chainrSpec to end with: 0 based index exclusive
          */
-        public JObject Transform(int to, JObject input)
+        public JToken Transform(int to, JToken input)
         {
             return Transform(0, to, input, null);
         }
@@ -204,7 +203,7 @@ namespace Jolt.Net
          * @param to transform from the chainrSpec to end with: 0 based index exclusive
          * @param context optional tweaks that the consumer of the transform would like
          */
-        public JObject Transform(int to, JObject input, Dictionary<string, object> context)
+        public JToken Transform(int to, JToken input, JObject context)
         {
             return Transform(0, to, input, context);
         }
@@ -216,7 +215,7 @@ namespace Jolt.Net
          * @param from transform from the chainrSpec to start with: 0 based index
          * @param to transform from the chainrSpec to end with: 0 based index exclusive
          */
-        public JObject Transform(int from, int to, JObject input)
+        public JToken Transform(int from, int to, JToken input)
         {
             return Transform(from, to, input, null);
         }
@@ -231,7 +230,7 @@ namespace Jolt.Net
          * @param to transform from the chainrSpec to end with: 0 based index exclusive
          * @param context optional tweaks that the consumer of the transform would like
          */
-        public JObject Transform(int from, int to, JObject input, Dictionary<string, object> context)
+        public JToken Transform(int from, int to, JToken input, JObject context)
         {
             if (from < 0 || to > _transformsList.Count || to <= from)
             {
@@ -241,9 +240,9 @@ namespace Jolt.Net
             return DoTransform(_transformsList.Skip(from).Take(to - from).ToList(), input, context);
         }
 
-        private static JObject DoTransform(List<IContextualTransform> transforms, JObject input, Dictionary<string, object> context)
+        private static JToken DoTransform(List<IContextualTransform> transforms, JToken input, JObject context)
         {
-            JObject intermediate = input;
+            JToken intermediate = input;
             foreach (IContextualTransform transform in transforms)
             {
                 intermediate = transform.Transform(intermediate, context);

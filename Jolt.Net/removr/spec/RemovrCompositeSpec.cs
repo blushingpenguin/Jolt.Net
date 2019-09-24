@@ -14,8 +14,10 @@
 * limitations under the License.
 */
 
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jolt.Net
 {
@@ -47,22 +49,22 @@ namespace Jolt.Net
     {
         private readonly IReadOnlyList<RemovrSpec> _allChildNodes;
 
-        public RemovrCompositeSpec(string rawKey, Dictionary<string, object> spec) :
+        public RemovrCompositeSpec(string rawKey, JObject spec) :
             base(rawKey)
         {
             var all = new List<RemovrSpec>();
 
             foreach (var kv in spec)
             {
-                string[] keyStrings = kv.Key.Split(new[] { "\\|" }, StringSplitOptions.None);
+                string[] keyStrings = kv.Key.Split('|');
                 foreach (string keyString in keyStrings)
                 {
                     RemovrSpec childSpec;
-                    if (kv.Value is Dictionary<string, object> dic)
+                    if (kv.Value is JObject dic)
                     {
                         childSpec = new RemovrCompositeSpec(keyString, dic);
                     }
-                    else if (kv.Value is string s && String.IsNullOrWhiteSpace(s))
+                    else if (kv.Value.Type == JTokenType.String && String.IsNullOrWhiteSpace(kv.Value.ToString()))
                     {
                         childSpec = new RemovrLeafSpec(keyString);
                     }
@@ -76,11 +78,11 @@ namespace Jolt.Net
             _allChildNodes = all.AsReadOnly();
         }
 
-        public override List<string> ApplyToMap(Dictionary<string, object> inputMap)
+        public override List<string> ApplyToMap(JObject inputMap)
         {
             if (_pathElement is LiteralPathElement)
             {
-                inputMap.TryGetValue(_pathElement.RawKey, out object subInput);
+                inputMap.TryGetValue(_pathElement.RawKey, out var subInput);
                 ProcessChildren(_allChildNodes, subInput);
             }
             else if (_pathElement is IStarPathElement star)
@@ -100,10 +102,9 @@ namespace Jolt.Net
             return new List<string>();
         }
 
-        public override List<int?> ApplyToList(List<object> inputList)
+        public override IEnumerable<int> ApplyToList(JArray inputList)
         {
-
-            // IF the input is a List, the only thing that will match is a Literal or a "*"
+            // If the input is a List, the only thing that will match is a Literal or a "*"
             if (_pathElement is LiteralPathElement)
             {
 
@@ -111,56 +112,56 @@ namespace Jolt.Net
 
                 if (pathElementInt.HasValue && pathElementInt.Value < inputList.Count)
                 {
-                    object subObj = inputList[pathElementInt.Value];
+                    var subObj = inputList[pathElementInt.Value];
                     ProcessChildren(_allChildNodes, subObj);
                 }
             }
             else if (_pathElement is StarAllPathElement)
             {
-                foreach (object entry in inputList)
+                foreach (var entry in inputList)
                 {
                     ProcessChildren(_allChildNodes, entry);
                 }
             }
 
             // Composite Nodes always return an empty list, as they dont actually remove anything.
-            return new List<int?>();
+            return new int[0];
         }
 
         /**
          * Call our child nodes, build up the set of keys or indices to actually remove, and then
          *  remove them.
          */
-        private void ProcessChildren(IReadOnlyList<RemovrSpec> children, object subInput)
+        private void ProcessChildren(IReadOnlyList<RemovrSpec> children, JToken subInput)
         {
             if (subInput != null)
             {
-                if (subInput is List<object> subList)
+                if (subInput is JArray subList)
                 {
-                    var indiciesToRemove = new List<int?>();
+                    var indiciesToRemove = new HashSet<int>();
 
                     // build a list of all indicies to remove
                     foreach (RemovrSpec childSpec in children)
                     {
-                        indiciesToRemove.AddRange(childSpec.ApplyToList(subList));
+                        foreach (var index in childSpec.ApplyToList(subList))
+                        {
+                            indiciesToRemove.Add(index);
+                        }
                     }
 
-                    var uniqueIndiciesToRemove = new List<int?>();
+                    var uniqueIndiciesToRemove = indiciesToRemove.ToList();
                     // Sort the list from Biggest to Smallest, so that when we remove items from the input
                     //  list we don't muck up the order.
                     // Aka removing 0 _then_ 3 would be bad, because we would have actually removed
                     //  0 and 4 from the "original" list.
-                    uniqueIndiciesToRemove.Sort();
+                    uniqueIndiciesToRemove.Sort((i1, i2) => i2.CompareTo(i1));
 
                     foreach (var index in uniqueIndiciesToRemove)
                     {
-                        if (index.HasValue)
-                        {
-                            subList.Remove(index);
-                        }
+                        subList.RemoveAt(index);
                     }
                 }
-                else if (subInput is Dictionary<string, object> subInputMap)
+                else if (subInput is JObject subInputMap)
                 {
                     var keysToRemove = new List<string>();
 

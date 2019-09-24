@@ -61,8 +61,7 @@ namespace Jolt.Net
 
             for (int index = 0; index < operations.Count; index++)
             {
-
-                object chainrEntryObj = operations[index];
+                var chainrEntryObj = operations[index];
 
                 ChainrEntry entry = new ChainrEntry(index, chainrEntryObj);
 

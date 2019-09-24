@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -89,7 +90,7 @@ namespace Jolt.Net
          * @param output data structure we are going to write the data to
          * @param walkedPath reference used to lookup reference values like "&1(2)"
          */
-        public void Write(object data, Dictionary<string, object> output, WalkedPath walkedPath)
+        public void Write(JToken data, JObject output, WalkedPath walkedPath)
         {
             var evaledPaths = Evaluate(walkedPath);
             if (evaledPaths != null)
@@ -98,12 +99,12 @@ namespace Jolt.Net
             }
         }
 
-        public OptionalObject Read(object data, WalkedPath walkedPath)
+        public JToken Read(JToken data, WalkedPath walkedPath)
         {
             var evaledPaths = Evaluate(walkedPath);
             if (evaledPaths == null)
             {
-                return new OptionalObject();
+                return null;
             }
 
             return _traversr.Get(data, evaledPaths);

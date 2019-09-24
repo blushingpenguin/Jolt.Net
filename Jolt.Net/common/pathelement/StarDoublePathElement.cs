@@ -36,11 +36,12 @@ namespace Jolt.Net
         public StarDoublePathElement(string key) :
             base(key)
         {
-            if (StringTools.CountMatches(key, "*") != 2) {
+            if (StringTools.CountMatches(key, "*") != 2) 
+            {
                 throw new ArgumentException(nameof(key), "StarDoublePathElement should have two '*' in its key. Was: " + key);
             }
 
-            string[] split = key.Split(new string[] { "\\*" }, StringSplitOptions.None);
+            string[] split = key.Split('*');
             bool startsWithStar = key.StartsWith("*");
             bool endsWithStar = key.EndsWith("*");
             if (startsWithStar && endsWithStar)
@@ -109,11 +110,10 @@ namespace Jolt.Net
                 return -1;
 
             }
-            int midIndex = literal.Substring(startOffset, endOffset - startOffset + 1).IndexOf(_mid);
 
+            int midIndex = literal.Substring(startOffset, endOffset - startOffset).IndexOf(_mid);
             if (midIndex >= 0)
             {
-
                 return midIndex + startOffset;
             }
             return -1;
@@ -131,7 +131,7 @@ namespace Jolt.Net
                 string firstStarPart = dataKey.Substring(_prefix.Length, midStart - _prefix.Length);
                 subKeys.Add(firstStarPart);
 
-                string secondStarPart = dataKey.Substring(midEnd, dataKey.Length - _suffix.Length);
+                string secondStarPart = dataKey.Substring(midEnd, dataKey.Length - _suffix.Length - midEnd);
                 subKeys.Add(secondStarPart);
 
                 return new MatchedElement(dataKey, subKeys);

@@ -1,0 +1,69 @@
+{
+    // verify that stock transforms behave when used with "context" transforms
+    "spec": [
+        {
+            "operation": "default",
+            "spec": {
+                "B": "bb"  // default in a silly "B" value
+            }
+        },
+        {
+            "operation": "shift",
+            "spec": {
+                "a": "a", // pass the input "a" value thru
+                "B": "b"  // "adjust" the silly capital B value
+            }
+        },
+        {
+            "operation": "com.bazaarvoice.jolt.chainr.transforms.GoodContextDrivenTransform"
+        },
+        {
+            "operation": "com.bazaarvoice.jolt.chainr.transforms.GoodSpecAndContextDrivenTransform",
+            "spec" : {
+                "KEY_TO_ADD" : "d"
+            }
+        }
+    ],
+
+    "tests" : [
+        {
+            "testCaseName" : "cc & dd",
+
+            // Input data for the unit test data.   Will verify that this data passes all the way thru.
+            "input": {
+                "a" : "aa"
+            },
+
+            "context" : {
+                "test_context_key_1" : "cc",
+                "test_context_key_2" : "dd"
+            },
+
+            "expected": {
+                "a": "aa",
+                "b": "bb",
+                "c": "cc",
+                "d": "dd"
+            }
+        },
+        {
+            "testCaseName" : "xx & yy",
+
+            "input": {
+                "a" : "aa"
+            },
+
+            "context" : {
+                "test_context_key_1" : "xx",  // verify the context is being used
+                "test_context_key_2" : "yy"
+            },
+
+            "expected": {
+                "a": "aa",
+                "b": "bb",
+                "c": "xx",
+                "d": "yy"
+            }
+        }
+    ]
+}

@@ -466,17 +466,18 @@ namespace Jolt.Net
          *
          * @throws com.bazaarvoice.jolt.exception.SpecException for a malformed spec
          */
-        public Shiftr(JObject spec)
+        public Shiftr(JToken spec)
         {
+            if (spec == null)
+            {
+                throw new SpecException("Shiftr expected a spec of Map type, got 'null'.");
+            }
+            if (spec.Type != JTokenType.Object)
+            {
+                throw new SpecException("Shiftr expected a spec of Map type, got " + spec.Type.ToString());
+            }
 
-            // if (spec == null) {
-            //     throw new SpecException("Shiftr expected a spec of Map type, got 'null'.");
-            // }
-            // if (!(spec instanceof Map ) ) {
-            //     throw new SpecException("Shiftr expected a spec of Map type, got " + spec.getClass().getSimpleName());
-            // }
-
-            _rootSpec = new ShiftrCompositeSpec(ROOT_KEY, spec);
+            _rootSpec = new ShiftrCompositeSpec(ROOT_KEY, (JObject)spec);
         }
 
         /**
@@ -487,20 +488,19 @@ namespace Jolt.Net
          * @throws com.bazaarvoice.jolt.exception.TransformException for a malformed spec or if there are issues during
          * the transform
          */
-        public override JObject Transform(JObject input)
+        public JToken Transform(JToken input)
         {
-            var output = new Dictionary<string, object>();
+            var output = new JObject();
 
             // Create a root LiteralPathElement so that # is useful at the root level
             MatchedElement rootLpe = new MatchedElement(ROOT_KEY);
             WalkedPath walkedPath = new WalkedPath();
             walkedPath.Add(input, rootLpe);
 
-            _rootSpec.Apply(ROOT_KEY, new OptionalObject(input), walkedPath, output, null);
+            _rootSpec.Apply(ROOT_KEY, input, walkedPath, output, null);
 
             output.TryGetValue(ROOT_KEY, out var result);
-            // TODO: hack
-            return (JObject)result;
+            return result ?? JValue.CreateNull();
         }
     }
 }

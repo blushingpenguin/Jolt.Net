@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -34,42 +35,40 @@ namespace Jolt.Net
      */
     public class AutoExpandArrayTraversalStep : ArrayTraversalStep
     {
-
         public AutoExpandArrayTraversalStep(Traversr traversr, ITraversalStep child) :
                 base(traversr, child)
         {
         }
 
-        public override OptionalObject Get(object list, string key)
+        public override JToken Get(JToken list, string key)
         {
-
             if ("[]" != key)
             {
                 throw new TraversrException("AutoExpandArrayTraversal expects a '[]' key. Was: " + key);
             }
 
-            return new OptionalObject();
+            return null;
         }
 
-        public override OptionalObject Remove(object tree, string key)
+        public override JToken Remove(JToken tree, string key)
         {
             if ("[]" != key)
             {
                 throw new TraversrException("AutoExpandArrayTraversal expects a '[]' key. Was: " + key);
             }
 
-            return new OptionalObject();
+            return null;
         }
 
-        public override OptionalObject OverwriteSet(object tree, string key, object data)
+        public override JToken OverwriteSet(JToken tree, string key, JToken data)
         {
             if ("[]" != key)
             {
                 throw new TraversrException("AutoExpandArrayTraversal expects a '[]' key. Was: " + key);
             }
-            var list = (List<object>)tree;
+            var list = (JArray)tree;
             list.Add(data);
-            return new OptionalObject(data);
+            return data;
         }
     }
 }

@@ -1,25 +1,24 @@
 /*
- * Copyright 2013 Bazaarvoice, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+* Copyright 2013 Bazaarvoice, Inc.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
-namespace Jolt.Net
+using System;
+using Newtonsoft.Json.Linq;
+
+namespace Jolt.Net.Functions.Math
 {
-
-#if FALSE
-    public class Math {
-
     /**
      * Given a list of objects, returns the max value in its appropriate type
      * also, interprets string as Number and returns appropriately
@@ -29,157 +28,131 @@ namespace Jolt.Net
      * max("a", "b", "c") == Optional.empty()
      * max([]) == Optional.empty()
      */
-    public static Optional<Number> max( List<object> args ) {
-        if(args == null || args.size() == 0) {
-            return Optional.empty();
+    public class NumberListCompare : ListFunction
+    {
+        private readonly Func<long?, long, long?> _longCompareFn;
+        private readonly Func<double?, double, double?> _doubleCompareFn;
+        private readonly Func<double, long, bool> _doubleLongCompareFn;
+
+        public NumberListCompare(
+            Func<long?, long, long?> longCompareFn,
+            Func<double?, double, double?> doubleCompareFn,
+            Func<double, long, bool> doubleLongCompareFn
+        )
+        {
+            _doubleCompareFn = doubleCompareFn;
+            _doubleLongCompareFn = doubleLongCompareFn;
+            _longCompareFn = longCompareFn;
         }
 
-        Integer maxInt = Integer.MIN_VALUE;
-        Double maxDouble = -(Double.MAX_VALUE);
-        Long maxLong = Long.MIN_VALUE;
-        boolean found = false;
+        protected override JToken ApplyList(JArray input)
+        {
+            if (input == null || input.Count == 0)
+            {
+                return null;
+            }
 
-        for(object arg: args) {
-            if(arg instanceof Integer) {
-                maxInt = java.lang.Math.max( maxInt, (Integer) arg );
-                found = true;
-            }
-            else if(arg instanceof Double) {
-                maxDouble = java.lang.Math.max( maxDouble, (Double) arg );
-                found = true;
-            }
-            else if(arg instanceof Long) {
-                maxLong = java.lang.Math.max(maxLong, (Long) arg);
-                found = true;
-            }
-            else if(arg instanceof string) {
-                Optional<?> optional = Objects.toNumber( arg );
-                if(optional.isPresent()) {
-                    arg = optional.get();
-                    if(arg instanceof Integer) {
-                        maxInt = java.lang.Math.max( maxInt, (Integer) arg );
-                        found = true;
+            long? curLong = null;
+            double? curDouble = null;
+
+            foreach (var arg in input)
+            {
+                if (arg.Type == JTokenType.Integer)
+                {
+                    curLong = _longCompareFn(curLong, arg.Value<long>());
+                }
+                else if (arg.Type == JTokenType.Float)
+                {
+                    curDouble = _doubleCompareFn(curDouble, arg.Value<double>());
+                }
+                else if (arg.Type == JTokenType.String)
+                {
+                    string s = arg.Value<string>();
+                    if (Int64.TryParse(s, out var longVal))
+                    {
+                        curLong = _longCompareFn(curLong, longVal);
                     }
-                    else if(arg instanceof Double) {
-                        maxDouble = java.lang.Math.max( maxDouble, (Double) arg );
-                        found = true;
-                    }
-                    else if(arg instanceof Long) {
-                        maxLong = java.lang.Math.max(maxLong, (Long) arg);
-                        found = true;
+                    else if (Double.TryParse(s, out var doubleVal))
+                    {
+                        curDouble = _doubleCompareFn(curDouble, doubleVal);
                     }
                 }
             }
-        }
-        if(!found) {
-            return Optional.empty();
-        }
 
-        // explicit getter method calls to avoid runtime autoboxing
-        // autoBoxing will cause it to return the different type
-        // check MathTest#testAutoBoxingIssue for example
-        if(maxInt.longValue() >= maxDouble.longValue() && maxInt.longValue() >= maxLong) {
-            return Optional.<Number>of(maxInt);
+            if (curLong.HasValue)
+            {
+                if (curDouble.HasValue && _doubleLongCompareFn(curDouble.Value, curLong.Value))
+                {
+                    return curDouble.Value;
+                }
+                return curLong.Value;
+            }
+            if (curDouble.HasValue)
+            {
+                return curDouble.Value;
+            }
+            return null;
         }
-        else if(maxLong >= maxDouble.longValue()) {
-            return Optional.<Number>of(maxLong);
+    }
+
+    public class Max : NumberListCompare
+    {
+        public Max() : base(
+            (long? max, long val) => max.HasValue ? System.Math.Max(max.Value, val) : val,
+            (double? max, double val) => max.HasValue ? System.Math.Max(max.Value, val) : val,
+            (double a, long b) => a > b)
+        {
         }
-        else {
-            return Optional.<Number>of(maxDouble);
+    }
+
+    public class Min : NumberListCompare
+    {
+        public Min() : base(
+            (long? min, long val) => min.HasValue ? System.Math.Min(min.Value, val) : val,
+            (double? min, double val) => min.HasValue ? System.Math.Min(min.Value, val) : val,
+            (double a, long b) => a > b)
+        {
         }
     }
 
     /**
-     * Given a list of objects, returns the min value in its appropriate type
-     * also, interprets string as Number and returns appropriately
-     *
-     * min(1d,2l,3) == Optional.of(1d)
-     * min("1.0",2l,d) == Optional.of(1.0)
-     * min("a", "b", "c") == Optional.empty()
-     * min([]) == Optional.empty()
-     */
-    public static Optional<Number> min( List<object> args ) {
-        if(args == null || args.size() == 0) {
-            return Optional.empty();
-        }
-        Integer minInt = Integer.MAX_VALUE;
-        Double minDouble = Double.MAX_VALUE;
-        Long minLong = Long.MAX_VALUE;
-        boolean found = false;
-
-        for(object arg: args) {
-            if(arg instanceof Integer) {
-                minInt = java.lang.Math.min( minInt, (Integer) arg );
-                found = true;
+    * Given any object, returns, if possible. its absolute value wrapped in Optional
+    * Interprets string as Number
+    *
+    * abs("-123") == Optional.of(123)
+    * abs("123") == Optional.of(123)
+    * abs("12.3") == Optional.of(12.3)
+    *
+    * abs("abc") == Optional.empty()
+    * abs(null) == Optional.empty()
+    *
+    */
+    public class Abs : SingleFunction
+    {
+        protected override JToken ApplySingle(JToken arg)
+        {
+            if (arg.Type == JTokenType.Integer)
+            {
+                return System.Math.Abs(arg.Value<long>());
             }
-            else if(arg instanceof Double) {
-                minDouble = java.lang.Math.min( minDouble, (Double) arg );
-                found = true;
+            if (arg.Type == JTokenType.Float)
+            {
+                return System.Math.Abs(arg.Value<double>());
             }
-            else if(arg instanceof Long) {
-                minLong = java.lang.Math.min( minLong, (Long) arg );
-                found = true;
-            }
-            else if(arg instanceof string) {
-                Optional<?> optional = Objects.toNumber( arg );
-                if(optional.isPresent()) {
-                    arg = optional.get();
-                    if(arg instanceof Integer) {
-                        minInt = java.lang.Math.min( minInt, (Integer) arg );
-                        found = true;
-                    }
-                    else if(arg instanceof Double) {
-                        minDouble = java.lang.Math.min( minDouble, (Double) arg );
-                        found = true;
-                    }
-                    else if(arg instanceof Long) {
-                        minLong = java.lang.Math.min(minLong, (Long) arg);
-                        found = true;
-                    }
+            if (arg.Type == JTokenType.String)
+            {
+                string s = arg.Value<string>();
+                if (Int64.TryParse(s, out var longVal))
+                {
+                    return System.Math.Abs(longVal);
+                }
+                if (Int64.TryParse(s, out var doubleVal))
+                {
+                    return System.Math.Abs(doubleVal);
                 }
             }
+            return null;
         }
-        if(!found) {
-            return Optional.empty();
-        }
-        // explicit getter method calls to avoid runtime autoboxing
-        if(minInt.longValue() <= minDouble.longValue() && minInt.longValue() <= minLong) {
-            return Optional.<Number>of(minInt);
-        }
-        else if(minLong <= minDouble.longValue()) {
-            return Optional.<Number>of(minLong);
-        }
-        else {
-            return Optional.<Number>of(minDouble);
-        }
-    }
-
-    /**
-     * Given any object, returns, if possible. its absolute value wrapped in Optional
-     * Interprets string as Number
-     *
-     * abs("-123") == Optional.of(123)
-     * abs("123") == Optional.of(123)
-     * abs("12.3") == Optional.of(12.3)
-     *
-     * abs("abc") == Optional.empty()
-     * abs(null) == Optional.empty()
-     *
-     */
-    public static Optional<Number> abs( object arg ) {
-        if(arg instanceof Integer) {
-            return Optional.<Number>of( java.lang.Math.abs( (Integer) arg ));
-        }
-        else if(arg instanceof Double) {
-            return Optional.<Number>of( java.lang.Math.abs( (Double) arg ));
-        }
-        else if(arg instanceof Long) {
-            return Optional.<Number>of( java.lang.Math.abs( (Long) arg ));
-        }
-        else if(arg instanceof string) {
-            return abs( Objects.toNumber( arg ).get() );
-        }
-        return Optional.empty();
     }
 
     /**
@@ -188,258 +161,174 @@ namespace Jolt.Net
      *
      * avg(2,"2","abc") == Optional.of(2.0)
      */
-    public static Optional<Double> avg (List<object> args) {
-        double sum = 0d;
-        int count = 0;
-        for(object arg: args) {
-            Optional<? extends Number> numberOptional = Objects.toNumber( arg );
-            if(numberOptional.isPresent()) {
-                sum = sum + numberOptional.get().doubleValue();
-                count = count + 1;
+    public class Avg : ListFunction
+    {
+        protected override JToken ApplyList(JArray args)
+        {
+            double sum = 0.0;
+            int count = 0;
+            foreach (var arg in args)
+            {
+
+                if (arg.Type == JTokenType.Integer || arg.Type == JTokenType.Float)
+                {
+                    sum += arg.Value<double>();
+                    ++count;
+                }
+                else if (arg.Type == JTokenType.String &&
+                         Double.TryParse(arg.Value<string>(), out var doubleVal))
+                {
+                    sum += doubleVal;
+                    ++count;
+                }
             }
-        }
-        return  count == 0 ? Optional.<Double>empty() : Optional.of( sum / count );
-    }
-
-    public static Optional<Integer> intSum(List<object> args) {
-        Integer sum = 0;
-        for(object arg: args) {
-            Optional<? extends Integer> numberOptional = Objects.toInteger(arg);
-            if(numberOptional.isPresent()) {
-                sum = sum + numberOptional.get();
+            if (count == 0)
+            {
+                return null;
             }
+            return sum / count;
         }
-        return Optional.of(sum);
     }
 
-    public static Optional<Double> doubleSum(List<object> args) {
-        Double sum = 0.0;
-        for(object arg: args) {
-            Optional<? extends Double> numberOptional = Objects.toDouble(arg);
-            if(numberOptional.isPresent()) {
-                sum = sum + numberOptional.get();
+    public class IntSum : ListFunction
+    {
+        protected override JToken ApplyList(JArray args)
+        {
+            int sum = 0;
+            foreach (var arg in args)
+            {
+                if (arg.Type == JTokenType.Integer)
+                {
+                    sum += arg.Value<int>();
+                }
+                else if (arg.Type == JTokenType.String &&
+                         Int32.TryParse(arg.Value<string>(), out var intVal))
+                {
+                    sum += intVal;
+                }
             }
+            return sum;
         }
-        return Optional.of(sum);
     }
 
-    public static Optional<Long> longSum(List<object> args) {
-        Long sum = 0l;
-        for(object arg: args) {
-            Optional<? extends Long> numberOptional = Objects.toLong(arg);
-            if(numberOptional.isPresent()) {
-                sum = sum + numberOptional.get();
+    public class LongSum : ListFunction
+    {
+        protected override JToken ApplyList(JArray args)
+        {
+            long sum = 0;
+            foreach (var arg in args)
+            {
+                if (arg.Type == JTokenType.Integer)
+                {
+                    sum += arg.Value<long>();
+                }
+                else if (arg.Type == JTokenType.String &&
+                         Int64.TryParse(arg.Value<string>(), out var intVal))
+                {
+                    sum += intVal;
+                }
             }
+            return sum;
         }
-        return Optional.of(sum);
     }
 
-    public static Optional<Integer> intSubtract(List<object> argList) {
-
-        if ( argList == null || argList.size() != 2 ) {
-            return Optional.empty();
+    public class DoubleSum : ListFunction
+    {
+        protected override JToken ApplyList(JArray args)
+        {
+            double sum = 0;
+            foreach (var arg in args)
+            {
+                if (arg.Type == JTokenType.Integer)
+                {
+                    sum += arg.Value<double>();
+                }
+                else if (arg.Type == JTokenType.String &&
+                         Double.TryParse(arg.Value<string>(), out var intVal))
+                {
+                    sum += intVal;
+                }
+            }
+            return sum;
         }
-
-        if ( ! ( argList.get(0) instanceof Integer && argList.get(1) instanceof Integer ) ) {
-            return Optional.empty();
-        }
-
-        int a = (Integer) argList.get(0);
-        int b = (Integer) argList.get(1);
-
-        return Optional.of( a - b );
     }
 
-    public static Optional<Double> doubleSubtract(List<object> argList) {
-
-        if ( argList == null || argList.size() != 2 ) {
-            return Optional.empty();
+    public class IntSubtract : ListFunction
+    {
+        protected override JToken ApplyList(JArray args)
+        {
+            if (args == null || args.Count != 2 ||
+                args[0].Type != JTokenType.Integer ||
+                args[1].Type != JTokenType.Integer)
+            {
+                return null;
+            }
+            return args[0].Value<int>() - args[1].Value<int>();
         }
-
-        if ( ! ( argList.get(0) instanceof Double && argList.get(1) instanceof Double ) ) {
-            return Optional.empty();
-        }
-
-        double a = (Double) argList.get(0);
-        double b = (Double) argList.get(1);
-
-        return Optional.of( a - b );
     }
 
-    public static Optional<Long> longSubtract(List<object> argList) {
-
-        if ( argList == null || argList.size() != 2 ) {
-            return Optional.empty();
+    public class LongSubtract : ListFunction
+    {
+        protected override JToken ApplyList(JArray args)
+        {
+            if (args == null || args.Count != 2 ||
+                args[0].Type != JTokenType.Integer ||
+                args[1].Type != JTokenType.Integer)
+            {
+                return null;
+            }
+            return args[0].Value<long>() - args[1].Value<long>();
         }
-
-        if ( ! ( argList.get(0) instanceof Long && argList.get(1) instanceof Long ) ) {
-            return Optional.empty();
-        }
-
-        long a = (Long) argList.get(0);
-        long b = (Long) argList.get(1);
-
-        return Optional.of( a - b );
     }
 
-
-    public static Optional<Double> divide(List<object> argList) {
-
-        if ( argList == null || argList.size() != 2 ) {
-            return Optional.empty();
+    public class DoubleSubtract : ListFunction
+    {
+        protected override JToken ApplyList(JArray args)
+        {
+            if (args == null || args.Count != 2 ||
+                (args[0].Type != JTokenType.Integer && args[0].Type != JTokenType.Float) ||
+                (args[1].Type != JTokenType.Integer && args[1].Type != JTokenType.Float))
+            {
+                return null;
+            }
+            return args[0].Value<double>() - args[1].Value<double>();
         }
+    }
 
-        Optional<? extends Number> numerator = Objects.toNumber(argList.get(0));
-        Optional<? extends Number> denominator = Objects.toNumber(argList.get(1));
-
-        if(numerator.isPresent() && denominator.isPresent()) {
-
-            Double drDoubleValue = denominator.get().doubleValue();
-            if(drDoubleValue == 0) {
-                return Optional.empty();
+    public class Divide : ListFunction
+    {
+        public static JToken DividePair(JArray args)
+        {
+            if (args == null || args.Count != 2 ||
+                (args[0].Type != JTokenType.Integer && args[0].Type != JTokenType.Float) ||
+                (args[1].Type != JTokenType.Integer && args[1].Type != JTokenType.Float))
+            {
+                return null;
             }
 
-            Double nrDoubleValue = numerator.get().doubleValue();
-            Double result = nrDoubleValue/drDoubleValue;
-            return Optional.of(result);
-        }
-
-        return Optional.empty();
-    }
-
-    public static Optional<Double> divideAndRound(List<object> argList, int digitsAfterDecimalPoint ) {
-
-       Optional<Double> divideResult = divide(argList);
-
-       if(divideResult.isPresent()){
-           Double divResult = divideResult.get();
-           BigDecimal bigDecimal = new BigDecimal(divResult).setScale(digitsAfterDecimalPoint, RoundingMode.HALF_UP);
-           return Optional.of(bigDecimal.doubleValue());
-       }
-
-       return Optional.empty();
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class max extends Function.BaseFunction<object> {
-        @Override
-        protected Optional<object> applyList( final List argList ) {
-            return (Optional) max( argList );
-        }
-
-        @Override
-        protected Optional<object> applySingle( final object arg ) {
-            if(arg instanceof Number) {
-                return Optional.of(arg);
+            double denominator = args[1].Value<double>();
+            if (denominator == 0)
+            {
+                return null;
             }
-            else {
-                return Optional.empty();
+            double numerator = args[0].Value<double>();
+            return numerator / denominator;
+        }
+
+        protected override JToken ApplyList(JArray args) =>
+            Divide.DividePair(args);
+    }
+
+    public class DivideAndRound : ArgDrivenIntListFunction
+    {
+        protected override JToken ApplyList(int specialArg, JArray args)
+        {
+            JToken result = Divide.DividePair(args);
+            if (result != null)
+            {
+                return System.Math.Round(result.Value<double>(), specialArg);
             }
+            return result;
         }
     }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class min extends Function.BaseFunction<object> {
-
-        @Override
-        protected Optional<object> applyList( final List<object> argList ) {
-            return (Optional) min( argList );
-        }
-
-        @Override
-        protected Optional<object> applySingle(object arg) {
-            if(arg instanceof Number) {
-                return Optional.of(arg);
-            }
-            else {
-                return Optional.empty();
-            }
-        }
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class abs extends Function.SingleFunction<Number> {
-        @Override
-        protected Optional<Number> applySingle( final object arg ) {
-            return abs( arg );
-        }
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class divide extends Function.ListFunction {
-
-        @Override
-        protected Optional<object> applyList(List<object> argList) {
-           return (Optional)divide(argList);
-        }
-
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class divideAndRound extends Function.ArgDrivenListFunction<Integer> {
-
-
-        @Override
-        protected Optional<object> applyList(Integer digitsAfterDecimalPoint, List<object> args) {
-            return (Optional)divideAndRound(args, digitsAfterDecimalPoint);
-        }
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class avg extends Function.ListFunction {
-        @Override
-        protected Optional<object> applyList( final List<object> argList ) {
-            return (Optional) avg( argList );
-        }
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class intSum extends Function.ListFunction {
-        @Override
-        protected Optional<object> applyList( final List<object> argIntList ) {
-            return (Optional) intSum(argIntList);
-        }
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class doubleSum extends Function.ListFunction {
-        @Override
-        protected Optional<object> applyList( final List<object> argDoubleList ) {
-            return (Optional) doubleSum(argDoubleList);
-        }
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class longSum extends Function.ListFunction {
-        @Override
-        protected Optional<object> applyList( final List<object> argLongList ) {
-            return (Optional) longSum(argLongList);
-        }
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class intSubtract extends Function.ListFunction {
-        @Override
-        protected Optional<object> applyList( final List<object> argIntList ) {
-            return (Optional) intSubtract(argIntList);
-        }
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class doubleSubtract extends Function.ListFunction {
-        @Override
-        protected Optional<object> applyList( final List<object> argDoubleList ) {
-            return (Optional) doubleSubtract(argDoubleList);
-        }
-    }
-
-    @SuppressWarnings( "unchecked" )
-    public static final class longSubtract extends Function.ListFunction {
-        @Override
-        protected Optional<object> applyList( final List<object> argLongList ) {
-            return (Optional) longSubtract(argLongList);
-        }
-    }
-}
-#endif
 }

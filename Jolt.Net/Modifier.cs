@@ -15,137 +15,148 @@
  */
 
 using System.Collections.Generic;
+using Jolt.Net.Functions;
+using Jolt.Net.Functions.Lists;
+using Jolt.Net.Functions.Math;
+using Jolt.Net.Functions.Objects;
+using Jolt.Net.Functions.Strings;
+using Newtonsoft.Json.Linq;
 
 namespace Jolt.Net
 {
-#if FALSE
     /**
      * Base Templatr transform that to behave differently based on provided opMode
      */
-    public abstract class Modifier : SpecDriven, IContextualTransform {
-
-        private static readonly Dictionary<string, IFunction> STOCK_FUNCTIONS = new Dictionary<string, Function>
+    public abstract class Modifier : SpecDriven, IContextualTransform
     {
-        { "toLower", new Strings.toLowerCase() },
-        { "toUpper", new Strings.toUpperCase() },
-        { "concat", new Strings.concat() },
-        { "join", new Strings.join() },
-        { "split", new Strings.split() },
-        { "substring", new Strings.substring() },
-        { "trim", new Strings.trim() },
-        { "leftPad", new Strings.leftPad() },
-        { "rightPad", new Strings.rightPad() },
+        public static readonly IReadOnlyDictionary<string, IFunction> STOCK_FUNCTIONS = new Dictionary<string, IFunction>
+        {
+            { "toLower", new ToLowerCase() },
+            { "toUpper", new ToUpperCase() },
+            { "concat", new Concat() },
+            { "join", new Join() },
+            { "split", new Split() },
+            { "substring", new Substring() },
+            { "trim", new Trim() },
+            { "leftPad", new LeftPad() },
+            { "rightPad", new RightPad() },
 
-        { "min", new Math.min() },
-        { "max", new Math.max() },
-        { "abs", new Math.abs() },
-        { "avg", new Math.avg() },
-        { "intSum", new Math.intSum() },
-        { "doubleSum", new Math.doubleSum() },
-        { "longSum", new Math.longSum() },
-        { "intSubtract", new Math.intSubtract() },
-        { "doubleSubtract", new Math.doubleSubtract() },
-        { "longSubtract", new Math.longSubtract() },
-        { "divide", new Math.divide() },
-        { "divideAndRound", new Math.divideAndRound() },
+            { "min", new Min() },
+            { "max", new Max() },
+            { "abs", new Abs() },
+            { "avg", new Avg() },
+            { "intSum", new IntSum() },
+            { "doubleSum", new DoubleSum() },
+            { "longSum", new LongSum() },
+            { "intSubtract", new IntSubtract() },
+            { "doubleSubtract", new DoubleSubtract() },
+            { "longSubtract", new LongSubtract() },
+            { "divide", new Divide() },
+            { "divideAndRound", new DivideAndRound() },
 
-        { "toInteger", new Objects.toInteger() },
-        { "toDouble", new Objects.toDouble() },
-        { "toLong", new Objects.toLong() },
-        { "toBoolean", new Objects.toBoolean() },
-        { "toString", new Objects.toString() },
-        { "size", new Objects.size() },
+            { "toInteger", new ToInteger() },
+            { "toDouble", new ToDouble() },
+            { "toLong", new ToLong() },
+            { "toBoolean", new ToBoolean() },
+            { "toString", new ToString() },
+            { "size", new Size() },
+            
+            { "squashNulls", new SquashNulls() },
+            { "recursivelySquashNulls", new RecursivelySquashNulls() },
 
-        { "squashNulls", new Objects.squashNulls() },
-        { "recursivelySquashNulls", new Objects.recursivelySquashNulls() },
+            { "noop", new Noop() },
+            { "isPresent", new IsPresent() },
+            { "notNull", new NotNull() },
+            { "isNull", new IsNull() },
 
-        { "noop", Function.noop },
-        { "isPresent", Function.isPresent },
-        { "notNull", Function.notNull },
-        { "isNull", Function.isNull },
+            { "firstElement", new FirstElement() },
+            { "lastElement", new LastElement() },
+            { "elementAt", new ElementAt() },
+            { "toList", new ToList() },
+            { "sort", new Sort() }
+        };
 
-        { "firstElement", new Lists.firstElement() },
-        { "lastElement", new Lists.lastElement() },
-        { "elementAt", new Lists.elementAt() },
-        { "toList", new Lists.toList() },
-        { "sort", new Lists.sort() }
-    };
+        private readonly ModifierCompositeSpec _rootSpec;
 
-    private readonly ModifierCompositeSpec _rootSpec;
+        private Modifier(JObject spec, OpMode opMode, IReadOnlyDictionary<string, IFunction> functionsMap)
+        {
+            if (spec == null)
+            {
+                throw new SpecException(opMode.GetName() + " expected a spec of Map type, got 'null'.");
+            }
 
-    @SuppressWarnings( "unchecked" )
-    private Modifier( object spec, OpMode opMode, Map<string, Function> functionsMap ) {
-        if ( spec == null ){
-            throw new SpecException( opMode.name() + " expected a spec of Map type, got 'null'." );
+            if (functionsMap == null || functionsMap.Count == 0)
+            {
+                throw new SpecException(opMode.GetName() + " expected a populated functions' map type, got " + (functionsMap == null ? "null" : "empty"));
+            }
+
+            TemplatrSpecBuilder templatrSpecBuilder = new TemplatrSpecBuilder(opMode, functionsMap);
+            _rootSpec = new ModifierCompositeSpec(ROOT_KEY, spec, opMode, templatrSpecBuilder);
         }
-        if ( ! ( spec instanceof Map ) ) {
-            throw new SpecException( opMode.name() + " expected a spec of Map type, got " + spec.getClass().getSimpleName() );
+
+        public JToken Transform(JToken input, JObject context)
+        {
+            var contextWrapper = new JObject();
+            contextWrapper.Add(ROOT_KEY, context);
+
+            MatchedElement rootLpe = new MatchedElement(ROOT_KEY);
+            WalkedPath walkedPath = new WalkedPath();
+            walkedPath.Add(input, rootLpe);
+
+            _rootSpec.Apply(ROOT_KEY, input, walkedPath, null, contextWrapper);
+            return contextWrapper[ROOT_KEY];
         }
 
-        if(functionsMap == null || functionsMap.isEmpty()) {
-            throw new SpecException( opMode.name() + " expected a populated functions' map type, got " + (functionsMap == null?"null":"empty") );
+        /**
+         * This variant of modifier creates the key/index is missing,
+         * and overwrites the value if present
+         */
+        public class Overwritr : Modifier
+        {
+            public Overwritr(JObject spec) :
+                this(spec, Modifier.STOCK_FUNCTIONS)
+            {
+
+            }
+
+            public Overwritr(JObject spec, IReadOnlyDictionary<string, IFunction> functionsMap) :
+                base(spec, OpMode.OVERWRITR, functionsMap)
+            {
+            }
         }
 
-        functionsMap = Collections.unmodifiableMap( functionsMap );
-        TemplatrSpecBuilder templatrSpecBuilder = new TemplatrSpecBuilder( opMode, functionsMap );
-        rootSpec = new ModifierCompositeSpec( ROOT_KEY, (Map<string, object>) spec, opMode, templatrSpecBuilder );
+        /**
+         * This variant of modifier only writes when the key/index is missing
+         */
+        public class Definr : Modifier
+        {
+            public Definr(JObject spec) :
+                this(spec, Modifier.STOCK_FUNCTIONS)
+            {
+
+            }
+
+            public Definr(JObject spec, IReadOnlyDictionary<string, IFunction> functionsMap) :
+                base(spec, OpMode.DEFINER, functionsMap)
+            {
+            }
+        }
+
+        /**
+         * This variant of modifier only writes when the key/index is missing or the value is null
+         */
+        public class Defaultr : Modifier
+        {
+            public Defaultr(JObject spec) :
+                this(spec, Modifier.STOCK_FUNCTIONS)
+            {
+
+            }
+
+            public Defaultr(JObject spec, IReadOnlyDictionary<string, IFunction> functionsMap) :
+                base(spec, OpMode.DEFAULTR, functionsMap)
+            {
+            }
+        }
     }
-
-    @Override
-    public object transform( final object input, final Map<string, object> context ) {
-
-        Map<string, object> contextWrapper = new HashMap<>(  );
-        contextWrapper.put( ROOT_KEY, context );
-
-        MatchedElement rootLpe = new MatchedElement( ROOT_KEY );
-        WalkedPath walkedPath = new WalkedPath();
-        walkedPath.add( input, rootLpe );
-
-        rootSpec.apply( ROOT_KEY, Optional.of( input), walkedPath, null, contextWrapper );
-        return input;
-    }
-
-    /**
-     * This variant of modifier creates the key/index is missing,
-     * and overwrites the value if present
-     */
-    public static final class Overwritr extends Modifier {
-
-        public Overwritr( object spec ) {
-            this( spec, STOCK_FUNCTIONS );
-        }
-
-        public Overwritr( object spec, Map<string, Function> functionsMap ) {
-            super( spec, OpMode.OVERWRITR, functionsMap );
-        }
-    }
-
-    /**
-     * This variant of modifier only writes when the key/index is missing
-     */
-    public static final class Definr extends Modifier {
-
-        public Definr( final object spec ) {
-            this( spec, STOCK_FUNCTIONS );
-        }
-
-        public Definr( object spec, Map<string, Function> functionsMap ) {
-            super( spec, OpMode.DEFINER, functionsMap );
-        }
-    }
-
-    /**
-     * This variant of modifier only writes when the key/index is missing or the value is null
-     */
-    public static class Defaultr extends Modifier {
-
-        public Defaultr( final object spec ) {
-            this( spec, STOCK_FUNCTIONS );
-        }
-
-        public Defaultr( object spec, Map<string, Function> functionsMap ) {
-            super( spec, OpMode.DEFAULTR, functionsMap );
-        }
-    }
-#endif
 }

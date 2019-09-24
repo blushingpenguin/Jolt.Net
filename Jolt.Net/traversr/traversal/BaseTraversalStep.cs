@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -20,32 +21,31 @@ namespace Jolt.Net
 {
     public abstract class BaseTraversalStep : ITraversalStep
     {
-
-        protected readonly ITraversalStep child;
-        protected readonly Traversr traversr;
+        protected readonly ITraversalStep _child;
+        protected readonly Traversr _traversr;
 
         public BaseTraversalStep(Traversr traversr, ITraversalStep child)
         {
-            this.traversr = traversr;
-            this.child = child;
+            _traversr = traversr;
+            _child = child;
         }
 
-        public abstract OptionalObject Get(object tree, string key);
+        public abstract JToken Get(JToken tree, string key);
         public abstract Type GetStepType();
-        public abstract object NewContainer();
-        public abstract OptionalObject OverwriteSet(object tree, string key, object data);
-        public abstract OptionalObject Remove(object tree, string key);
+        public abstract JToken NewContainer();
+        public abstract JToken OverwriteSet(JToken tree, string key, JToken data);
+        public abstract JToken Remove(JToken tree, string key);
 
         public ITraversalStep GetChild()
         {
-            return child;
+            return _child;
         }
 
-        public OptionalObject Traverse(object tree, TraversalStepOperation op, IEnumerator<string> keys, object data)
+        public JToken Traverse(JToken tree, TraversalStepOperation op, IEnumerator<string> keys, JToken data)
         {
             if (tree == null)
             {
-                return new OptionalObject();
+                return null;
             }
 
             if (GetStepType().IsAssignableFrom(tree.GetType()))
@@ -53,7 +53,7 @@ namespace Jolt.Net
                 keys.MoveNext();
                 string key = keys.Current;
 
-                if (child == null)
+                if (_child == null)
                 {
                     // End of the Traversal so do the set or get
                     switch (op)
@@ -61,7 +61,7 @@ namespace Jolt.Net
                         case TraversalStepOperation.GET:
                             return Get(tree, key);
                         case TraversalStepOperation.SET:
-                            return traversr.HandleFinalSet(this, tree, key, data);
+                            return _traversr.HandleFinalSet(this, tree, key, data);
                         case TraversalStepOperation.REMOVE:
                             return Remove(tree, key);
                         default:
@@ -72,16 +72,16 @@ namespace Jolt.Net
                 {
 
                     // We just an intermediate step, so traverse and then hand over control to our child
-                    OptionalObject optSub = traversr.HandleIntermediateGet(this, tree, key, op);
+                    var optSub = _traversr.HandleIntermediateGet(this, tree, key, op);
 
-                    if (optSub.HasValue)
+                    if (optSub != null)
                     {
-                        return child.Traverse(optSub.Value, op, keys, data);
+                        return _child.Traverse(optSub, op, keys, data);
                     }
                 }
             }
 
-            return new OptionalObject();
+            return null;
         }
     }
 }

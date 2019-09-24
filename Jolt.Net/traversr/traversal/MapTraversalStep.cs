@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
@@ -24,43 +25,42 @@ namespace Jolt.Net
      */
     public class MapTraversalStep : BaseTraversalStep
     {
-
         public MapTraversalStep(Traversr traversr, ITraversalStep child) :
             base(traversr, child)
         {
         }
 
-        public override Type GetStepType() => typeof(Dictionary<string, object>);
+        public override Type GetStepType() => typeof(JObject);
 
-        public override object NewContainer() => new Dictionary<string, object>();
+        public override JToken NewContainer() => new JObject();
 
-        public override OptionalObject Get(object tree, string key)
+        public override JToken Get(JToken tree, string key)
         {
-            var map = (Dictionary<string, object>)tree;
+            var map = (JObject)tree;
 
             // This here was the whole point of adding the Optional stuff.
             // Aka, I need a way to distinguish between the key not existing in the map
             //  or the key existing but having a _valid_ null value.
-            return map.TryGetValue(key, out var value) ?
-                new OptionalObject(value) : new OptionalObject();
+            map.TryGetValue(key, out var value);
+            return value;
         }
 
-        public override OptionalObject Remove(object tree, string key)
+        public override JToken Remove(JToken tree, string key)
         {
-            var map = (Dictionary<string, object>)tree;
+            var map = (JObject)tree;
             if (map.TryGetValue(key, out var value))
             {
                 map.Remove(key);
-                return new OptionalObject(value);
+                return value;
             }
-            return new OptionalObject();
+            return null;
         }
 
-        public override OptionalObject OverwriteSet(object tree, string key, object data)
+        public override JToken OverwriteSet(JToken tree, string key, JToken data)
         {
-            var map = (Dictionary<string, object>)tree;
+            var map = (JObject)tree;
             map[key] = data;
-            return new OptionalObject(data);
+            return data;
         }
     }
 }

@@ -188,7 +188,7 @@ namespace Jolt.Net
             {
                 throw new SpecException("Removr expected a spec of Map type, got 'null'.");
             }
-            if (!(spec is Dictionary<string, object> dic))
+            if (!(spec is JObject dic))
             {
                 throw new SpecException("Removr expected a spec of Map type, got " + spec.GetType().Name);
             }
@@ -201,14 +201,15 @@ namespace Jolt.Net
          *
          * @param input the JSON object to transform in plain vanilla Jackson Map<string, object> style
          */
-        public override JObject Transform(JObject input)
+        public JToken Transform(JToken input)
         {
-
             // Wrap the input in a map to fool the CompositeSpec to recurse itself.
-            var wrappedMap = new Dictionary<string, object>();
+            var wrappedMap = new JObject();
             wrappedMap.Add(ROOT_KEY, input);
             _rootSpec.ApplyToMap(wrappedMap);
-            return input;
+            // it's possible the input was cloned if it belonged to another object graph
+            // e.g. chainr with removr
+            return wrappedMap[ROOT_KEY];
         }
     }
 }

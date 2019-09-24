@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 
 namespace Jolt.Net
@@ -43,10 +44,12 @@ namespace Jolt.Net
         // The processed key from the JSON config
         private readonly IMatchablePathElement _pathElement;
 
-        public CardinalitySpec(string rawJsonKey) {
+        public CardinalitySpec(string rawJsonKey)
+        {
             var pathElements = Parse(rawJsonKey);
 
-            if (pathElements.Count != 1) {
+            if (pathElements.Count != 1)
+            {
                 throw new SpecException("CardinalityTransform invalid LHS:" + rawJsonKey + " can not contain '.'");
             }
 
@@ -102,11 +105,11 @@ namespace Jolt.Net
          *
          * @return true if this this spec "handles" the inputkey such that no sibling specs need to see it
          */
-        public abstract bool ApplyCardinality(string inputKey, object input, WalkedPath walkedPath, object parentContainer);
+        public abstract bool ApplyCardinality(string inputKey, JToken input, WalkedPath walkedPath, JToken parentContainer);
 
-        public bool Apply(string inputKey, OptionalObject inputOptional, WalkedPath walkedPath, Dictionary<string, object> output, Dictionary<string, object> context)
+        public bool Apply(string inputKey, JToken inputOptional, WalkedPath walkedPath, JObject output, JObject context)
         {
-            return ApplyCardinality(inputKey, inputOptional.Value, walkedPath, output);
+            return ApplyCardinality(inputKey, inputOptional, walkedPath, output);
         }
 
         public IMatchablePathElement GetPathElement() => _pathElement;
