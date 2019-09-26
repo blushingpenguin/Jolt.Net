@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.29230.47
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Jolt.Net", "Jolt.Net\Jolt.Net.csproj", "{F4877A28-BB73-4FF2-9210-EBAC98136A35}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jolt.Net.Test", "Jolt.Net.Test\Jolt.Net.Test.csproj", "{3858F929-CA48-4770-90B6-C8968E22E03A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Jolt.Net.Test", "Jolt.Net.Test\Jolt.Net.Test.csproj", "{3858F929-CA48-4770-90B6-C8968E22E03A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample", "Sample\Sample.csproj", "{52BB8E4A-B155-406D-872D-4900AAF891B8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{3858F929-CA48-4770-90B6-C8968E22E03A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3858F929-CA48-4770-90B6-C8968E22E03A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3858F929-CA48-4770-90B6-C8968E22E03A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{52BB8E4A-B155-406D-872D-4900AAF891B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{52BB8E4A-B155-406D-872D-4900AAF891B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{52BB8E4A-B155-406D-872D-4900AAF891B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{52BB8E4A-B155-406D-872D-4900AAF891B8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

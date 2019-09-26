@@ -1,0 +1,39 @@
+image: Visual Studio 2019
+version: 1.0.{build}
+dotnet_csproj:
+  patch: true
+  file: '**\*.csproj'
+  version: '{version}'
+  package_version: '{version}'
+  assembly_version: '{version}'
+  file_version: '{version}'
+  informational_version: '{version}'
+before_build:
+- cmd: nuget restore
+environment:
+  CODECOV_REPO_TOKEN:
+    secure: 3v0P3sDuNspxshfix4LHYVo3SEhE21V1fvYeo2pfNBjbq7DnwCd4UuiGLuPplG8n
+configuration:
+  - Release
+test_script:
+  - ps: |
+      dotnet test --configuration Release /p:CollectCoverage=true /p:Exclude='\"[*TestAdapter*]*,[*]*.Startup*,[*]*.Program,[*.Test*]*,[nunit*]*\"' /p:ExcludeByAttribute='\"Obsolete,GeneratedCode,CompilerGeneratedAttribute\"' /p:CoverletOutputFormat=cobertura /p:CoverletOutput=../coverage/Jolt.Net.coverage.cobertura.xml /p:Threshold=80 /p:ThresholdType=branch Jolt.Net.Test/Jolt.Net.Test.csproj
+after_test:
+- ps: |
+    $env:PATH = 'C:\Program Files\git\usr\bin;' + $env:PATH
+    Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
+    bash codecov.sh -f '"coverage/*.xml"' -t $env:CODECOV_REPO_TOKEN
+for:
+-
+  branches:
+    only:
+      - master
+
+  build:
+    publish_nuget: true
+
+  deploy:
+    provider: NuGet
+    api_key:
+      secure: lo9gC4NDoECBxAzgZZMFKklAQGmyL7VOIfMzPqRB1InlB4D5g4A+tSGUITR2pS6i
+    skip_symbols: false
