@@ -14,69 +14,66 @@
  * limitations under the License.
  */
 using FluentAssertions;
+using FluentAssertions.Json;
 using NUnit.Framework;
-using NSubstitute;
-using System;
-using System.Collections.Generic;
 
 namespace Jolt.Net.Test
 {
-    #if FALSE
-    public class StarSinglePathElementTest {
+    [Parallelizable(ParallelScope.All)]
+    public class StarSinglePathElementTest
+    {
+        [Test]
+        public void TestStarAtFront()
+        {
+            IStarPathElement star = new StarSinglePathElement("*-tuna");
+            star.StringMatch("tuna-tuna").Should().BeTrue();
+            star.StringMatch("bob-tuna").Should().BeTrue();
+            star.StringMatch("-tuna").Should().BeFalse();   // * has to catch something
+            star.StringMatch("tuna").Should().BeFalse();
+            star.StringMatch("tuna-bob").Should().BeFalse();
 
-        @Test
-        public void testStarAtFront() {
+            MatchedElement lpe = star.Match("bob-tuna", null);
+            lpe.GetSubKeyRef(0).Should().Be("bob-tuna");
+            lpe.GetSubKeyRef(1).Should().Be("bob");
+            lpe.GetSubKeyCount().Should().Be(2);
 
-            StarPathElement star = new StarSinglePathElement("*-tuna");
-            Assert.assertTrue(star.stringMatch("tuna-tuna"));
-            Assert.assertTrue(star.stringMatch("bob-tuna"));
-            Assert.assertFalse(star.stringMatch("-tuna"));   // * has to catch something
-            Assert.assertFalse(star.stringMatch("tuna"));
-            Assert.assertFalse(star.stringMatch("tuna-bob"));
-
-            MatchedElement lpe = star.match("bob-tuna", null);
-            Assert.assertEquals("bob-tuna", lpe.getSubKeyRef(0));
-            Assert.assertEquals("bob", lpe.getSubKeyRef(1));
-            Assert.assertEquals(2, lpe.getSubKeyCount());
-
-            Assert.assertNull(star.match("-tuna", null));
+            star.Match("-tuna", null).Should().BeNull();
         }
 
-        @Test
-        public void testStarAtEnd() {
+        [Test]
+        public void TestStarAtEnd()
+        {
+            IStarPathElement star = new StarSinglePathElement("tuna-*");
+            star.StringMatch("tuna-tuna").Should().BeTrue();
+            star.StringMatch("tuna-bob").Should().BeTrue();
+            star.StringMatch("tuna-").Should().BeFalse();
+            star.StringMatch("tuna").Should().BeFalse();
+            star.StringMatch("bob-tuna").Should().BeFalse();
 
-            StarPathElement star = new StarSinglePathElement("tuna-*");
-            Assert.assertTrue(star.stringMatch("tuna-tuna"));
-            Assert.assertTrue(star.stringMatch("tuna-bob"));
-            Assert.assertFalse(star.stringMatch("tuna-"));
-            Assert.assertFalse(star.stringMatch("tuna"));
-            Assert.assertFalse(star.stringMatch("bob-tuna"));
+            MatchedElement lpe = star.Match("tuna-bob", null);
+            lpe.GetSubKeyRef(0).Should().Be("tuna-bob");
+            lpe.GetSubKeyRef(1).Should().Be("bob");
+            lpe.GetSubKeyCount().Should().Be(2);
 
-            MatchedElement lpe = star.match("tuna-bob", null);
-            Assert.assertEquals("tuna-bob", lpe.getSubKeyRef(0));
-            Assert.assertEquals("bob", lpe.getSubKeyRef(1));
-            Assert.assertEquals(2, lpe.getSubKeyCount());
-
-            Assert.assertNull(star.match("tuna-", null));
+            star.Match("tuna-", null).Should().BeNull();
         }
 
-        @Test
-        public void testStarInMiddle() {
+        [Test]
+        public void TestStarInMiddle()
+        {
+            IStarPathElement star = new StarSinglePathElement("tuna-*-marlin");
+            star.StringMatch("tuna-tuna-marlin").Should().BeTrue();
+            star.StringMatch("tuna-bob-marlin").Should().BeTrue();
+            star.StringMatch("tuna--marlin").Should().BeFalse();
+            star.StringMatch("tunamarlin").Should().BeFalse();
+            star.StringMatch("marlin-bob-tuna").Should().BeFalse();
 
-            StarPathElement star = new StarSinglePathElement("tuna-*-marlin");
-            Assert.assertTrue(star.stringMatch("tuna-tuna-marlin"));
-            Assert.assertTrue(star.stringMatch("tuna-bob-marlin"));
-            Assert.assertFalse(star.stringMatch("tuna--marlin"));
-            Assert.assertFalse(star.stringMatch("tunamarlin"));
-            Assert.assertFalse(star.stringMatch("marlin-bob-tuna"));
+            MatchedElement lpe = star.Match("tuna-bob-marlin", null);
+            lpe.GetSubKeyRef(0).Should().Be("tuna-bob-marlin");
+            lpe.GetSubKeyRef(1).Should().Be("bob");
+            lpe.GetSubKeyCount().Should().Be(2);
 
-            MatchedElement lpe = star.match("tuna-bob-marlin", null);
-            Assert.assertEquals("tuna-bob-marlin", lpe.getSubKeyRef(0));
-            Assert.assertEquals("bob", lpe.getSubKeyRef(1));
-            Assert.assertEquals(2, lpe.getSubKeyCount());
-
-            Assert.assertNull(star.match("bob", null));
+            star.Match("bob", null).Should().BeNull();
         }
     }
-#endif
 }

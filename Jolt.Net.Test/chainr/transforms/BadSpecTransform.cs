@@ -13,22 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-using System;
-using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 namespace Jolt.Net.Test
 {
-    #if FALSE
     /**
      * Chainr should barf on this class, as it is a SpecTransform without a single arg constructor.
      * This class is reference from a JSON test fixture.
      */
-    public class BadSpecTransform implements SpecDriven, Transform {
-
-        @Override
-        public Object transform( Object input ) {
+    public class BadSpecTransform : SpecDriven, ITransform
+    {
+        public JToken Transform(JToken input)
+        {
             return input;
         }
     }
-#endif
 }

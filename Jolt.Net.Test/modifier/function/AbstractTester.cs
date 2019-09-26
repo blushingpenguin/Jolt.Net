@@ -15,37 +15,22 @@
  */
 
 using FluentAssertions;
-using NUnit.Framework;
-using NSubstitute;
-using System;
-using System.Collections.Generic;
+using FluentAssertions.Json;
+using Jolt.Net.Functions;
+using Newtonsoft.Json.Linq;
 
 namespace Jolt.Net.Test
 {
-    #if FALSE
-    @SuppressWarnings( "deprecated" )
-    public abstract class AbstractTester {
-
-        @SuppressWarnings( "unused" )
-        public abstract Iterator<Object[]> getTestCases();
-
-        @Test(dataProvider = "getTestCases")
-        public void testFunctions(String name, Function function, Object args, Optional<Object> expected) {
-            Optional<Object> actual;
-            if (args instanceof List) {
-                actual = function.apply((List)args);
-            }
-            else if (args instanceof Object[]){
-                actual = function.apply((Object[])args);
-            }
-            else {
-                actual = function.apply(args);
-            }
-            assertEquals(actual.isPresent(), expected.isPresent(), "actual and expected should both be present or not");
-            if (actual.isPresent()) {
-                assertEquals(actual.get(), expected.get(), name + " failed");
+    public abstract class AbstractTester
+    {
+        public void TestFunction(IFunction function, JToken args, JToken expected)
+        {
+            var actual = args != null ? function.Apply(args) : function.Apply();
+            (actual == null).Should().Be(expected == null, "actual and expected should both be present or not");
+            if (actual != null)
+            {
+                actual.Should().BeEquivalentTo(expected);
             }
         }
     }
-#endif
 }

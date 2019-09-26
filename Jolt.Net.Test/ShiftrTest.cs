@@ -17,11 +17,6 @@
 using FluentAssertions;
 using FluentAssertions.Json;
 using NUnit.Framework;
-using NSubstitute;
-using System;
-using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
-using System.IO;
 
 namespace Jolt.Net.Test
 {
@@ -94,7 +89,7 @@ namespace Jolt.Net.Test
         // TODO: test arrays better (wildcards test array could be in reverse order)
         public void RunTest(string testCaseName)
         {
-            var testCase = GetTestCase(Path.Combine("json", "shiftr", testCaseName));
+            var testCase = GetTestCase($"shiftr/{testCaseName}");
             Shiftr shiftr = new Shiftr(testCase.Spec);
             var actual = shiftr.Transform(testCase.Input);
 

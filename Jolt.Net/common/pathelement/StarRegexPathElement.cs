@@ -107,9 +107,9 @@ namespace Jolt.Net
                 return null;
             }
 
-            int groupCount = result.Groups.Count;
             var subKeys = new List<string>();
-            for (int index = 1; index <= result.Groups.Count; index++) {
+            for (int index = 1; index < result.Groups.Count; index++) 
+            {
                 subKeys.Add(result.Groups[index].Value);
             }
 

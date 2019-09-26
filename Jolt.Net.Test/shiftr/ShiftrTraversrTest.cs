@@ -13,108 +13,128 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
+using FluentAssertions.Json;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using NSubstitute;
-using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class ShiftrTraversrTest {
-
-        @DataProvider
-        public Object[][] inAndOutTestCases() throws Exception {
-            return new Object[][] {
+    [Parallelizable(ParallelScope.All)]
+    public class ShiftrTraversrTest
+    {
+        public static IEnumerable<TestCaseData> GetTestCases(string testName)
+        {
+            var tests = new object[][]
+            {
+                new object[]
                 {
                     "simple place",
-                    Arrays.asList( "tuna" ),
-                    "tuna",
+                    new string[] { "tuna" },
+                    new JValue("tuna"),
                     "a.b",
-                    Arrays.asList( "a", "b" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : \"tuna\" } }" )
+                    new string[] { "a", "b" },
+                    JObject.Parse( "{ \"a\" : { \"b\" : \"tuna\" } }" )
                 },
+                new object[]
                 {
                     "simple explicit array place",
-                    Arrays.asList( "tuna" ),
+                    new string[] { "tuna" },
                     null,
                     "a.b[]",
-                    Arrays.asList( "a", "b", "[]" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : [ \"tuna\" ] } }" )
+                    new string[] { "a", "b", "[]" },
+                    JObject.Parse("{ \"a\" : { \"b\" : [ \"tuna\" ] } }")
                 },
+                new object[]
                 {
                     "simple explicit array place with sub",
-                    Arrays.asList( "tuna" ),
+                    new string[] { "tuna" },
                     null,
                     "a.b[].c",
-                    Arrays.asList( "a", "b", "[]", "c" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : [ { \"c\" : \"tuna\" } ] } }" )
+                    new string[] { "a", "b", "[]", "c" },
+                    JObject.Parse("{ \"a\" : { \"b\" : [ { \"c\" : \"tuna\" } ] } }")
                 },
+                new object[]
                 {
                     "simple array place",
-                    Arrays.asList( "tuna" ),
-                    "tuna",
+                    new string[] { "tuna" },
+                    new JValue("tuna"),
                     "a.b.[1]",
-                    Arrays.asList( "a", "b", "1" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : [ null, \"tuna\" ] } }" )
+                    new string[] { "a", "b", "1" },
+                    JObject.Parse("{ \"a\" : { \"b\" : [ null, \"tuna\" ] } }")
                 },
+                new object[]
                 {
                     "nested array place",
-                    Arrays.asList( "tuna" ),
-                    "tuna",
+                    new string[] { "tuna" },
+                    new JValue("tuna"),
                     "a.b[1].c",
-                    Arrays.asList( "a", "b", "1", "c" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : [ null, { \"c\" : \"tuna\" } ] } }" )
+                    new string[] { "a", "b", "1", "c" },
+                    JObject.Parse("{ \"a\" : { \"b\" : [ null, { \"c\" : \"tuna\" } ] } }")
                 },
+                new object[]
                 {
                     "simple place into write array",
-                    Arrays.asList( "tuna", "marlin" ),
-                    Arrays.asList( "tuna", "marlin" ),
+                    new string[] { "tuna", "marlin" },
+                    new JArray("tuna", "marlin"),
                     "a.b",
-                    Arrays.asList( "a", "b" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : [ \"tuna\", \"marlin\" ] } }" )
+                    new string[] { "a", "b" },
+                    JObject.Parse("{ \"a\" : { \"b\" : [ \"tuna\", \"marlin\" ] } }")
                 },
+                new object[]
                 {
                     "simple array place with nested write array",
-                    Arrays.asList( "tuna", "marlin" ),
-                    Arrays.asList( "tuna", "marlin" ),
+                    new string[] { "tuna", "marlin" },
+                    new JArray("tuna", "marlin"),
                     "a.b.[1]",
-                    Arrays.asList( "a", "b", "1" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : [ null, [ \"tuna\", \"marlin\" ] ] } }" )
+                    new string[] { "a", "b", "1" },
+                    JObject.Parse("{ \"a\" : { \"b\" : [ null, [ \"tuna\", \"marlin\" ] ] } }")
                 },
+                new object[]
                 {
-                    "nested array place with nested ouptut array",
-                    Arrays.asList( "tuna", "marlin" ),
-                    Arrays.asList( "tuna", "marlin" ),
+                    "nested array place with nested output array",
+                    new string[] { "tuna", "marlin" },
+                    new JArray("tuna", "marlin"),
                     "a.b.[1].c",
-                    Arrays.asList( "a", "b", "1", "c" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : [ null, { \"c\" : [ \"tuna\", \"marlin\"] } ] } }" )
+                    new string[] { "a", "b", "1", "c" },
+                    JObject.Parse("{ \"a\" : { \"b\" : [ null, { \"c\" : [ \"tuna\", \"marlin\"] } ] } }")
                 }
             };
+            foreach (var test in tests)
+            {
+                yield return new TestCaseData(test.Skip(1).ToArray()) { TestName = $"{testName}({test[0]})" };
+            }
         }
 
-        @Test(dataProvider = "inAndOutTestCases")
-        public void setTest(String testCaseName, List<String> outputs, Object notUsedInThisTest, String traversrPath, List<String> keys, JObject expected) throws Exception
-        {
-            JObject actual = new HashMap<>();
+        public static IEnumerable<TestCaseData> SetTests() =>
+            GetTestCases("SetTest");
 
-            Traversr traversr = new ShiftrTraversr( traversrPath );
-            for ( String output : outputs ) {
-                traversr.set( actual, keys, output );
+        public static IEnumerable<TestCaseData> GetTests() =>
+            GetTestCases("GetTest");
+
+        [TestCaseSource(nameof(SetTests))]
+        public void SetTest(string[] outputs, JToken notUsedInThisTest, string traversrPath, string[] keys, JObject expected)
+        {
+            var actual = new JObject();
+
+            Traversr traversr = new ShiftrTraversr(traversrPath);
+            foreach (var output in outputs)
+            {
+                traversr.Set(actual, keys, output);
             }
 
-            JoltTestUtil.runDiffy( testCaseName, expected, actual );
+            actual.Should().BeEquivalentTo(expected);
         }
 
-        @Test(dataProvider = "inAndOutTestCases")
-        public void getTest(String testCaseName, List<String> notUsedInThisTest, Object expected, String traversrPath, List<String> keys, JObject tree) throws Exception
+        [TestCaseSource(nameof(GetTests))]
+        public void GetTest(string[] notUsedInThisTest, JToken expected, string traversrPath, string[] keys, JObject tree)
         {
-            Traversr traversr = new ShiftrTraversr( traversrPath  );
-            Optional<Object> actual = traversr.get( tree, keys);
-
-            JoltTestUtil.runDiffy( testCaseName, expected, actual.get() );
+            var traversr = new ShiftrTraversr(traversrPath );
+            var actual = traversr.Get(tree, keys);
+            actual.Should().BeEquivalentTo(expected);
         }
     }
-#endif
 }

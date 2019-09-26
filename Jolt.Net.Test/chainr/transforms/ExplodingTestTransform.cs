@@ -13,18 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-using System;
-using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 namespace Jolt.Net.Test
 {
-    #if FALSE
-    public class ExplodingTestTransform implements ContextualTransform {
-
-        @Override
-        public Object transform( Object input, JObject context ) {
-            throw new TransformException( "kaboom" );
+    public class ExplodingTestTransform : IContextualTransform
+    {
+        public JToken Transform(JToken input, JObject context)
+        {
+            throw new TransformException("kaboom");
         }
     }
-#endif
 }

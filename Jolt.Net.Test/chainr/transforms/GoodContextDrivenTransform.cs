@@ -13,27 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-using System;
-using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 namespace Jolt.Net.Test
 {
-    #if FALSE
-    public class GoodContextDrivenTransform implements ContextualTransform {
+    public class GoodContextDrivenTransform : IContextualTransform 
+    {
+        public const string CONTEXT_KEY = "test_context_key_1";
+        private const string STATIC_KEY = "c";
 
-        public static final String CONTEXT_KEY = "test_context_key_1";
-
-        private static final String STATIC_KEY = "c";
-
-        @Override
-        public Object transform( Object input, JObject context ) {
-
-            String contextValue = (String) context.get(CONTEXT_KEY);
-
-            ((Map) input).put( STATIC_KEY, contextValue );
-
+        public JToken Transform(JToken input, JObject context)
+        {
+            input[STATIC_KEY] = context[CONTEXT_KEY];
             return input;
         }
     }
-#endif
 }

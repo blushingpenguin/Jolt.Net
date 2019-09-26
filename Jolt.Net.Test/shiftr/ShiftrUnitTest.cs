@@ -13,193 +13,207 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
+using FluentAssertions.Json;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using NSubstitute;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class ShiftrUnitTest {
-
-        @DataProvider
-        public Object[][] shiftrTestCases() throws IOException {
-            return new Object[][] {
+    [Parallelizable(ParallelScope.All)]
+    public class ShiftrUnitTest 
+    {
+        public static IEnumerable<TestCaseData> GetShiftrUnitTestCases()
+        {
+            return new TestCaseData[]
+            {
+                new TestCaseData(
+                    JObject.Parse("{ \"tuna-*-marlin-*\" : { \"rating-*\" : \"&(1,2).&.value\" } }"),
+                    JObject.Parse("{ \"tuna-A-marlin-AAA\" : { \"rating-BBB\" : \"bar\" } }"),
+                    JObject.Parse("{ \"AAA\" : { \"rating-BBB\" : { \"value\" : \"bar\" } } }")
+                )
                 {
-                    "Simple * and Reference",
-                    JsonUtils.jsonToMap("{ \"tuna-*-marlin-*\" : { \"rating-*\" : \"&(1,2).&.value\" } }"),
-                    JsonUtils.jsonToMap("{ \"tuna-A-marlin-AAA\" : { \"rating-BBB\" : \"bar\" } }"),
-                    JsonUtils.jsonToMap("{ \"AAA\" : { \"rating-BBB\" : { \"value\" : \"bar\" } } }")
+                    TestName = "ShiftrUnitTests(Simple * and Reference)"
                 },
+                new TestCaseData(
+                    JObject.Parse("{ \"tuna-*-marlin-*\" : { \"rating-*\" : [ \"&(1,2).&.value\", \"foo\"] } }"),
+                    JObject.Parse("{ \"tuna-A-marlin-AAA\" : { \"rating-BBB\" : \"bar\" } }"),
+                    JObject.Parse("{ \"foo\" : \"bar\", \"AAA\" : { \"rating-BBB\" : { \"value\" : \"bar\" } } }")
+                )
                 {
-                    "Shift to two places",
-                    JsonUtils.jsonToMap("{ \"tuna-*-marlin-*\" : { \"rating-*\" : [ \"&(1,2).&.value\", \"foo\"] } }"),
-                    JsonUtils.jsonToMap("{ \"tuna-A-marlin-AAA\" : { \"rating-BBB\" : \"bar\" } }"),
-                    JsonUtils.jsonToMap("{ \"foo\" : \"bar\", \"AAA\" : { \"rating-BBB\" : { \"value\" : \"bar\" } } }")
+                    TestName = "ShiftrUnitTests(Shift to two places)"
                 },
+                new TestCaseData(
+                    JObject.Parse("{ \"tuna|marlin\" : \"&-write\" }"),
+                    JObject.Parse("{ \"tuna\" : \"snapper\" }"),
+                    JObject.Parse("{ \"tuna-write\" : \"snapper\" }")
+                )
                 {
-                    "Or",
-                    JsonUtils.jsonToMap("{ \"tuna|marlin\" : \"&-write\" }"),
-                    JsonUtils.jsonToMap("{ \"tuna\" : \"snapper\" }"),
-                    JsonUtils.jsonToMap("{ \"tuna-write\" : \"snapper\" }")
+                    TestName = "ShiftrUnitTests(Or)"
                 },
-                {
-                    "KeyRef",
-                    JsonUtils.jsonToMap("{ \"rating-*\" : { \"&(0,1)\" : { \"match\" : \"&\" } } }"),
-                    JsonUtils.jsonToMap("{ \"rating-a\" : { \"a\" : { \"match\": \"a-match\" }, \"random\" : { \"match\" : \"noise\" } }," +
+                new TestCaseData(
+                    JObject.Parse("{ \"rating-*\" : { \"&(0,1)\" : { \"match\" : \"&\" } } }"),
+                    JObject.Parse("{ \"rating-a\" : { \"a\" : { \"match\": \"a-match\" }, \"random\" : { \"match\" : \"noise\" } }," +
                             "              \"rating-c\" : { \"c\" : { \"match\": \"c-match\" }, \"random\" : { \"match\" : \"noise\" } } }"),
-                    JsonUtils.jsonToMap("{ \"match\" : [ \"a-match\", \"c-match\" ] }")
-                },
+                    JObject.Parse("{ \"match\" : [ \"a-match\", \"c-match\" ] }")
+                )
                 {
-                    "Complex array write",
-                    JsonUtils.jsonToMap("{ \"tuna-*-marlin-*\" : { \"rating-*\" : \"tuna[&(1,1)].marlin[&(1,2)].&(0,1)\" } }"),
-                    JsonUtils.jsonToMap("{ \"tuna-2-marlin-3\" : { \"rating-BBB\" : \"bar\" }," +
-                                          "\"tuna-1-marlin-0\" : { \"rating-AAA\" : \"mahi\" } }"),
-                    JsonUtils.jsonToMap("{ \"tuna\" : [ null, " +
+                    TestName = "ShiftrUnitTests(KeyRef)"
+                },
+                new TestCaseData(
+                    JObject.Parse("{ \"tuna-*-marlin-*\" : { \"rating-*\" : \"tuna[&(1,1)].marlin[&(1,2)].&(0,1)\" } }"),
+                    JObject.Parse("{ \"tuna-2-marlin-3\" : { \"rating-BBB\" : \"bar\" }," +
+                                            "\"tuna-1-marlin-0\" : { \"rating-AAA\" : \"mahi\" } }"),
+                    JObject.Parse("{ \"tuna\" : [ null, " +
                             "                           { \"marlin\" : [ { \"AAA\" : \"mahi\" } ] }, " +
                             "                           { \"marlin\" : [ null, null, null, { \"BBB\" : \"bar\" } ] } " +
                             "                         ] " +
                             "            }")
+                )
+                {
+                    TestName = "ShiftrUnitTests(Complex array write)"
                 }
             };
         }
 
-        @Test(dataProvider = "shiftrTestCases")
-        public void shiftrUnitTest(String testName, JObject spec, JObject data, JObject expected) throws Exception {
-
-            Shiftr shiftr = new Shiftr( spec );
-            Object actual = shiftr.transform( data );
-
-            JoltTestUtil.runDiffy( testName, expected, actual );
+        [TestCaseSource(nameof(GetShiftrUnitTestCases))]
+        public void ShiftrUnitTests(JObject spec, JObject data, JObject expected)
+        {
+            Shiftr shiftr = new Shiftr(spec);
+            var actual = shiftr.Transform(data);
+            actual.Should().BeEquivalentTo(expected);
         }
 
-
-        @DataProvider
-        public Object[][] badSpecs() throws IOException {
-            return new Object[][] {
+        public static IEnumerable<TestCaseData> GetBadSpecsTestCases()
+        {
+            return new TestCaseData[]
+            {
+                new TestCaseData(null)
                 {
-                        "Null Spec",
-                        null,
+                    TestName = "FailureUnitTest(Null Spec)"
                 },
+                new TestCaseData(new JArray())
                 {
-                        "List Spec",
-                        new ArrayList<>(),
+                    TestName = "FailureUnitTest(List Spec)"
                 },
+                new TestCaseData(
+                    JObject.Parse( "{ }" )
+                )
                 {
-                        "Empty spec",
-                        JsonUtils.jsonToMap( "{ }" ),
+                    TestName = "FailureUnitTest(Empty spec)",
                 },
+                new TestCaseData(
+                    JObject.Parse( "{ 'tuna' : {} }" )
+                )
                 {
-                        "Empty sub-spec",
-                        JsonUtils.javason( "{ 'tuna' : {} }" ),
+                    TestName = "FailureUnitTest(Empty sub-spec)"
                 },
+                new TestCaseData(
+                    JObject.Parse( "{ 'tuna-*-marlin-*' : { 'rating-@' : '&(1,2).&.value' } }" )
+                )
                 {
-                        "Bad @",
-                        JsonUtils.javason( "{ 'tuna-*-marlin-*' : { 'rating-@' : '&(1,2).&.value' } }" ),
+                    TestName = "FailureUnitTest(Bad @)"
                 },
+                new TestCaseData(
+                    JObject.Parse( "{ 'tuna-*-marlin-*' : { 'rating-*' : '&(1,2).@.value' } }" )
+                )
                 {
-                        "RHS @ by itself",
-                        JsonUtils.javason( "{ 'tuna-*-marlin-*' : { 'rating-*' : '&(1,2).@.value' } }" ),
+                    TestName = "FailureUnitTest(RHS @ by itself)"
                 },
+                new TestCaseData(
+                    JObject.Parse( "{ 'tuna-*-marlin-*' : { 'rating-*' : '&(1,2).@(data.&(1,1).value' } }" )
+                )
                 {
-                        "RHS @ with bad Parens",
-                        JsonUtils.javason( "{ 'tuna-*-marlin-*' : { 'rating-*' : '&(1,2).@(data.&(1,1).value' } }" ),
+                    TestName = "FailureUnitTest(RHS @ with bad Parens)"
                 },
+                new TestCaseData(
+                    JObject.Parse( "{ 'tuna-*-marlin-*' : { 'rating-*' : '&(1,2).*.value' } }")
+                )
                 {
-                        "RHS *",
-                        JsonUtils.javason( "{ 'tuna-*-marlin-*' : { 'rating-*' : '&(1,2).*.value' } }" ),
+                    TestName = "FailureUnitTest(RHS *)"
                 },
+                new TestCaseData(
+                    JObject.Parse( "{ 'tuna-*-marlin-*' : { 'rating-*' : '&(1,2).$.value' } }")
+                )
                 {
-                        "RHS $",
-                        JsonUtils.javason( "{ 'tuna-*-marlin-*' : { 'rating-*' : '&(1,2).$.value' } }" ),
+                    TestName = "FailureUnitTest(RHS $)"
                 },
+                new TestCaseData(
+                    JObject.Parse("{ 'tuna-*-marlin-*' : { 'rating-*' : [ '&(1,2).photos[&(0,1)]-subArray[&(1,2)].value', 'foo'] } }")
+                )
                 {
-                        "Two Arrays",
-                        JsonUtils.javason("{ 'tuna-*-marlin-*' : { 'rating-*' : [ '&(1,2).photos[&(0,1)]-subArray[&(1,2)].value', 'foo'] } }"),
+                    TestName = "FailureUnitTest(Two Arrays)",
                 },
+                new TestCaseData(
+                    JObject.Parse("{ 'tuna-*-marlin-*' : { 'rating-&(1,2)-*' : [ '&(1,2).value', 'foo'] } }")
+                )
                 {
-                        "Can't mix * and & in the same key",
-                        JsonUtils.javason("{ 'tuna-*-marlin-*' : { 'rating-&(1,2)-*' : [ '&(1,2).value', 'foo'] } }"),
+                    TestName = "FailureUnitTest(Can't mix * and & in the same key)",
                 },
+                new TestCaseData(
+                    JObject.Parse("{ 'tuna' : 'marlin[-1]' }")
+                )
                 {
-                        "Don't put negative numbers in array references",
-                        JsonUtils.javason("{ 'tuna' : 'marlin[-1]' }"),
+                    TestName = "FailureUnitTest(Don't put negative numbers in array references)",
                 }
             };
         }
 
-        @Test(dataProvider = "badSpecs", expectedExceptions = SpecException.class)
-        public void failureUnitTest(String testName, Object spec) {
-            new Shiftr( spec );
+        [TestCaseSource(nameof(GetBadSpecsTestCases))]
+        public void FailureUnitTest(JToken spec)
+        {
+            FluentActions
+                .Invoking(() => new Shiftr(spec))
+                .Should().Throw<SpecException>();
         }
 
         /**
          * @return canonical dotNotation String built from the given paths
          */
-        public String buildCanonicalString( List<PathElement> paths ) {
+        public string BuildCanonicalString(List<IPathElement> paths) =>
+            String.Join('.', paths.Select(x => x.GetCanonicalForm()));
 
-            List<String> pathStrs = new ArrayList<>( paths.size() );
-            for( PathElement pe : paths ) {
-                pathStrs.add( pe.getCanonicalForm() );
-            }
-
-            return Joiner.on(".").join( pathStrs );
+        [TestCase("@a", "@(0,a)", TestName = "ValidRHSTests(#1)")]
+        [TestCase("@abc", "@(0,abc)", TestName = "ValidRHSTests(#2)")]
+        [TestCase("@a.b.c", "@(0,a).b.c", TestName = "ValidRHSTests(#3)")]
+        [TestCase("@(a.b\\.c)", "@(0,a.b\\.c)", TestName = "ValidRHSTests(#4)")]
+        [TestCase("@a.b.c", "@(0,a).b.c", TestName = "ValidRHSTests(#5)")]
+        [TestCase("@a.b.@c", "@(0,a).b.@(0,c)", TestName = "ValidRHSTests(#6)")]
+        [TestCase("@(a[2].&).b.@c", "@(0,a.[2].&(0,0)).b.@(0,c)", TestName = "ValidRHSTests(#7)")]
+        [TestCase("a[&2].@b[1].c", "a.[&(2,0)].@(0,b).[1].c", TestName = "ValidRHSTests(#8)")]
+        public void ValidRHSTests(string dotNotation, string expected)
+        {
+            var paths = PathElementBuilder.ParseDotNotationRHS(dotNotation);
+            string actualCanonicalForm = BuildCanonicalString(paths);
+            actualCanonicalForm.Should().Be(expected);
         }
 
-
-        @DataProvider
-        public Object[][] validRHS() throws IOException {
-            return new Object[][]{
-                { "@a", "@(0,a)" },
-                { "@abc", "@(0,abc)" },
-                { "@a.b.c", "@(0,a).b.c" },
-                { "@(a.b\\.c)", "@(0,a.b\\.c)" },
-                { "@a.b.c", "@(0,a).b.c" },
-                { "@a.b.@c", "@(0,a).b.@(0,c)" },
-                { "@(a[2].&).b.@c", "@(0,a.[2].&(0,0)).b.@(0,c)" },
-                { "a[&2].@b[1].c", "a.[&(2,0)].@(0,b).[1].c" }
-            };
+        [Test]
+        public void TestTransposePathParsing() 
+        {
+            var paths = PathElementBuilder.ParseDotNotationRHS( "test.@(2,foo\\.bar)" );
+            paths.Count.Should().Be(2);
+            var actualApe = (TransposePathElement)paths[1];
+            actualApe.GetCanonicalForm().Should().Be("@(2,foo\\.bar)");
         }
 
-        @Test(dataProvider = "validRHS" )
-        public void validRHSTests( String dotNotation, String expected ) {
-            List<PathElement> paths = PathElementBuilder.parseDotNotationRHS( dotNotation );
-            String actualCanonicalForm = buildCanonicalString( paths );
-
-            Assert.assertEquals( actualCanonicalForm, expected, "TestCase: " + dotNotation );
-        }
-
-        @Test
-        public void testTransposePathParsing() {
-
-            List<PathElement> paths = PathElementBuilder.parseDotNotationRHS( "test.@(2,foo\\.bar)" );
-
-            Assert.assertEquals( paths.size(), 2 );
-            TransposePathElement actualApe = (TransposePathElement) paths.get( 1 );
-
-            Assert.assertEquals( actualApe.getCanonicalForm(), "@(2,foo\\.bar)" );
-        }
-
-        @DataProvider
-        public Object[][] badRHS() throws IOException {
-            return new Object[][]{
-                    { "@" },
-                    { "a@" },
-                    { "@a@b" },
-                    { "@(a.b.&(2,2)" }, // missing trailing )
-                    { "@(a.b.&(2,2).d" }, // missing trailing )
-                    { "@(a.b.@c).d" },
-                    { "@(a.*.c)" }, // @ can not contain a *
-                    { "@(a.$2.c)" }, // @ can not contain a $
-            };
-        }
-
-        @Test(dataProvider = "badRHS", expectedExceptions = SpecException.class)
-        public void failureRHSTests( String dotNotation ) {
-            PathElementBuilder.parseDotNotationRHS( dotNotation );
+        [TestCase("@", TestName = "FailureRHSTests(naked at)")]
+        [TestCase("a@", TestName = "FailureRHSTests(missing suffix)")]
+        [TestCase("@a@b", TestName = "FailureRHSTests(missing prefix)")]
+        [TestCase("@(a.b.&(2,2)", TestName = "FailureRHSTests(missing trailing bracket #1)")]
+        [TestCase("@(a.b.&(2,2).d", TestName = "FailureRHSTests(missing trailing bracket #2)")]
+        [TestCase("@(a.b.@c).d", TestName = "FailureRHSTests(missing prefix in brackets)")]
+        [TestCase("@(a.*.c)", TestName = "FailureRHSTests(@ can not contain a *)")]
+        [TestCase("@(a.$2.c)", TestName = "FailureRHSTests(@ can not contain a $)")]
+        public void FailureRHSTests(string dotNotation)
+        {
+            FluentActions
+                .Invoking(() => PathElementBuilder.ParseDotNotationRHS(dotNotation))
+                .Should().Throw<SpecException>();
         }
     }
-#endif
 }

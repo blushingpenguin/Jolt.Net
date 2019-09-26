@@ -13,120 +13,116 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-using System;
-using System.Collections.Generic;
+using FluentAssertions;
+using FluentAssertions.Json;
+using NUnit.Framework;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class StarDoublePathElementTest {
+    [Parallelizable(ParallelScope.All)]
+    public class StarDoublePathElementTest
+    {
+        [Test]
+        public void TestStarInFirstAndMiddle()
+        {
+            IStarPathElement star = new StarDoublePathElement("*a*");
 
-        @Test
-        public void testStarInFirstAndMiddle() {
+            star.StringMatch("bbbaaccccc").Should().BeTrue();
+            star.StringMatch("abbbbbbbbcc").Should().BeFalse();
+            star.StringMatch("bbba").Should().BeFalse();
 
-            StarPathElement star = new StarDoublePathElement("*a*");
-
-            Assert.assertTrue(star.stringMatch("bbbaaccccc"));
-            Assert.assertFalse(star.stringMatch("abbbbbbbbcc"));
-            Assert.assertFalse(star.stringMatch("bbba"));
-
-            MatchedElement lpe = star.match("bbbaccc", null);
+            MatchedElement lpe = star.Match("bbbaccc", null);
             // * -> bbb
             // a -> a
             // * -> ccc
-            Assert.assertEquals("bbbaccc", lpe.getSubKeyRef(0));
-            Assert.assertEquals("bbb", lpe.getSubKeyRef(1));
-            Assert.assertEquals("ccc", lpe.getSubKeyRef(2));
-            Assert.assertEquals(3, lpe.getSubKeyCount());
+            lpe.GetSubKeyRef(0).Should().Be("bbbaccc");
+            lpe.GetSubKeyRef(1).Should().Be("bbb");
+            lpe.GetSubKeyRef(2).Should().Be("ccc");
+            lpe.GetSubKeyCount().Should().Be(3);
 
         }
 
-        @Test
-        public void testStarAtFrontAndEnd() {
+        [Test]
+        public void TestStarAtFrontAndEnd()
+        {
+            IStarPathElement star = new StarDoublePathElement("*a*c");
 
-            StarPathElement star = new StarDoublePathElement("*a*c");
+            star.StringMatch("bbbbadddc").Should().BeTrue();
+            star.StringMatch("bacc").Should().BeTrue();
+            star.StringMatch("bac").Should().BeFalse();
+            star.StringMatch("baa").Should().BeFalse();
 
-            Assert.assertTrue(star.stringMatch("bbbbadddc"));
-            Assert.assertTrue(star.stringMatch("bacc"));
-            Assert.assertFalse(star.stringMatch("bac"));
-            Assert.assertFalse(star.stringMatch("baa"));
-
-            MatchedElement lpe = star.match("abcadefc", null);
+            MatchedElement lpe = star.Match("abcadefc", null);
             // * -> abc
             // a -> a index 4
             // * -> def
             // c -> c
-            Assert.assertEquals("abcadefc", lpe.getSubKeyRef(0));
-            Assert.assertEquals("abc", lpe.getSubKeyRef(1));
-            Assert.assertEquals("def", lpe.getSubKeyRef(2));
-            Assert.assertEquals(3, lpe.getSubKeyCount());
-
+            lpe.GetSubKeyRef(0).Should().Be("abcadefc");
+            lpe.GetSubKeyRef(1).Should().Be("abc");
+            lpe.GetSubKeyRef(2).Should().Be("def");
+            lpe.GetSubKeyCount().Should().Be(3);
         }
 
-        @Test
-        public void testStarAtMiddleAndEnd() {
+        [Test]
+        public void TestStarAtMiddleAndEnd()
+        {
+            IStarPathElement star = new StarDoublePathElement("a*b*");
 
-            StarPathElement star = new StarDoublePathElement("a*b*");
+            star.StringMatch("adbc").Should().BeTrue();
+            star.StringMatch("abbc").Should().BeTrue();
+            star.StringMatch("adddddd").Should().BeFalse();
+            star.StringMatch("addb").Should().BeFalse();
+            star.StringMatch("abc").Should().BeFalse();
 
-            Assert.assertTrue(star.stringMatch("adbc"));
-            Assert.assertTrue(star.stringMatch("abbc"));
-            Assert.assertFalse(star.stringMatch("adddddd"));
-            Assert.assertFalse(star.stringMatch("addb"));
-            Assert.assertFalse(star.stringMatch("abc"));
-
-            MatchedElement lpe = star.match("abcbbac", null);
+            MatchedElement lpe = star.Match("abcbbac", null);
             // a -> a
             // * -> bc index 1
             // b -> b   index 3
             // * -> bac index 4
             // c -> c
-            Assert.assertEquals("abcbbac", lpe.getSubKeyRef(0));
-            Assert.assertEquals("bc", lpe.getSubKeyRef(1));
-            Assert.assertEquals("bac", lpe.getSubKeyRef(2));
-            Assert.assertEquals(3, lpe.getSubKeyCount());
-
+            lpe.GetSubKeyRef(0).Should().Be("abcbbac");
+            lpe.GetSubKeyRef(1).Should().Be("bc");
+            lpe.GetSubKeyRef(2).Should().Be("bac");
+            lpe.GetSubKeyCount().Should().Be(3);
         }
 
 
-        @Test
-        public void testStarsInMiddle() {
+        [Test]
+        public void TestStarsInMiddle()
+        {
+            IStarPathElement star = new StarDoublePathElement("a*b*c");
 
-            StarPathElement star = new StarDoublePathElement("a*b*c");
+            star.StringMatch("a123b456c").Should().BeTrue();
+            star.StringMatch("abccbcc").Should().BeTrue();
 
-            Assert.assertTrue(star.stringMatch("a123b456c"));
-            Assert.assertTrue(star.stringMatch("abccbcc"));
-
-            MatchedElement lpe = star.match("abccbcc", null);
+            MatchedElement lpe = star.Match("abccbcc", null);
             // a -> a
             // * -> bcc index 1
             // b -> b
             // * -> c index 2
             // c -> c
-            Assert.assertEquals("abccbcc", lpe.getSubKeyRef(0));
-            Assert.assertEquals("bcc", lpe.getSubKeyRef(1));
-            Assert.assertEquals("c", lpe.getSubKeyRef(2));
-            Assert.assertEquals(3, lpe.getSubKeyCount());
-
+            lpe.GetSubKeyRef(0).Should().Be("abccbcc");
+            lpe.GetSubKeyRef(1).Should().Be("bcc");
+            lpe.GetSubKeyRef(2).Should().Be("c");
+            lpe.GetSubKeyCount().Should().Be(3);
         }
 
 
-        @Test
-        public void testStarsInMiddleNonGreedy() {
+        [Test]
+        public void TestStarsInMiddleNonGreedy()
+        {
+            IStarPathElement star = new StarDoublePathElement("a*b*c");
 
-            StarPathElement star = new StarDoublePathElement("a*b*c");
-
-            MatchedElement lpe = star.match("abbccbccc", null);
+            MatchedElement lpe = star.Match("abbccbccc", null);
             // a -> a
             // * -> b index 1
             // b -> b
             // * -> ccbcc index 2
             // c -> c
-            Assert.assertEquals("abbccbccc", lpe.getSubKeyRef(0));
-            Assert.assertEquals("b", lpe.getSubKeyRef(1));
-            Assert.assertEquals("ccbcc", lpe.getSubKeyRef(2));
-            Assert.assertEquals(3, lpe.getSubKeyCount());
-
+            lpe.GetSubKeyRef(0).Should().Be("abbccbccc");
+            lpe.GetSubKeyRef(1).Should().Be("b");
+            lpe.GetSubKeyRef(2).Should().Be("ccbcc");
+            lpe.GetSubKeyCount().Should().Be(3);
         }
     }
-#endif
 }

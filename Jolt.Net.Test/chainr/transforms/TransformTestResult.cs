@@ -13,21 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-using System;
-using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 namespace Jolt.Net.Test
 {
-    #if FALSE
-    public class TransformTestResult {
-
-        public final Object input;
-        public final Object spec;
-
-        TransformTestResult(Object input, Object spec) {
-            this.input = input;
-            this.spec = spec;
+    public static class TransformTestResult
+    {
+        public static JToken CreateResult(JToken input, JToken spec)
+        {
+            return new JObject(
+                new JProperty("input", input),
+                new JProperty("spec", spec)
+            );
         }
     }
-#endif
 }

@@ -14,52 +14,62 @@
  * limitations under the License.
  */
 using FluentAssertions;
+using FluentAssertions.Json;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using NSubstitute;
-using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class KeyOrderingTest {
-
-        @DataProvider
-        public Object[][] shiftrKeyOrderingTestCases() throws IOException {
-            return new Object[][] {
+    [Parallelizable(ParallelScope.All)]
+    public class KeyOrderingTest
+    {
+        public static IEnumerable<TestCaseData> GetTestCases()
+        {
+            var tests = new object[][] {
+                new object[]
                 {
                     "Simple * and &",
-                    JsonUtils.jsonToMap( "{ \"*\" : { \"a\" : \"b\" }, \"&\" : { \"a\" : \"b\" } }" ),
-                    Arrays.asList( "&(0,0)", "*" )
+                    JObject.Parse( "{ \"*\" : { \"a\" : \"b\" }, \"&\" : { \"a\" : \"b\" } }" ),
+                    new string[] { "&(0,0)", "*" }
                 },
+                new object[]
                 {
                     "2* and 2&",
-                    JsonUtils.jsonToMap( "{ \"rating-*\" : { \"a\" : \"b\" }, \"rating-range-*\" : { \"a\" : \"b\" }, \"&\" : { \"a\" : \"b\" }, \"tuna-&(0)\" : { \"a\" : \"b\" } }" ),
-                    Arrays.asList( "tuna-&(0,0)", "&(0,0)", "rating-range-*", "rating-*" )
+                    JObject.Parse( "{ \"rating-*\" : { \"a\" : \"b\" }, \"rating-range-*\" : { \"a\" : \"b\" }, \"&\" : { \"a\" : \"b\" }, \"tuna-&(0)\" : { \"a\" : \"b\" } }" ),
+                    new string[] { "tuna-&(0,0)", "&(0,0)", "rating-range-*", "rating-*" }
                 },
+                new object[]
                 {
                     "2& alpha-number based fallback",
-                    JsonUtils.jsonToMap( "{ \"&\" : { \"a\" : \"b\" }, \"&(0,1)\" : { \"a\" : \"b\" } }" ),
-                    Arrays.asList( "&(0,0)", "&(0,1)" )
+                    JObject.Parse( "{ \"&\" : { \"a\" : \"b\" }, \"&(0,1)\" : { \"a\" : \"b\" } }" ),
+                    new string[] { "&(0,0)", "&(0,1)" }
                 },
+                new object[]
                 {
                     "2* and 2& alpha fallback",
-                    JsonUtils.jsonToMap( "{ \"aaaa-*\" : { \"a\" : \"b\" }, \"bbbb-*\" : { \"a\" : \"b\" }, \"aaaa-&\" : { \"a\" : \"b\" }, \"bbbb-&(0)\" : { \"a\" : \"b\" } }" ),
-                    Arrays.asList( "aaaa-&(0,0)", "bbbb-&(0,0)", "aaaa-*", "bbbb-*" )
+                    JObject.Parse( "{ \"aaaa-*\" : { \"a\" : \"b\" }, \"bbbb-*\" : { \"a\" : \"b\" }, \"aaaa-&\" : { \"a\" : \"b\" }, \"bbbb-&(0)\" : { \"a\" : \"b\" } }" ),
+                    new string[] { "aaaa-&(0,0)", "bbbb-&(0,0)", "aaaa-*", "bbbb-*" }
                 }
             };
+            foreach (var test in tests)
+            {
+                yield return new TestCaseData(test.Skip(1).ToArray()) { TestName = $"RunTest({test[0]})" };
+            }
         }
 
-        @Test(dataProvider = "shiftrKeyOrderingTestCases" )
-        public void testKeyOrdering( String testName, Map<String,Object> spec, List<String> expectedOrder ) {
-
+        [TestCaseSource(nameof(GetTestCases))]
+        public void RunTest(JObject spec, string[] expectedOrder)
+        {
             ShiftrCompositeSpec root = new ShiftrCompositeSpec( SpecDriven.ROOT_KEY, spec );
 
-            for ( int index = 0; index < expectedOrder.size(); index++) {
-                String expected = expectedOrder.get( index );
-                Assert.assertEquals( expected, root.getComputedChildren().get( index ).pathElement.getCanonicalForm(), testName );
+            for ( int index = 0; index < expectedOrder.Length; index++) 
+            {
+                var expected = expectedOrder[index];
+                var actual = root.GetComputedChildren()[index].GetPathElement().GetCanonicalForm();
+                actual.Should().Be(expected);
             }
         }
     }
-#endif
 }

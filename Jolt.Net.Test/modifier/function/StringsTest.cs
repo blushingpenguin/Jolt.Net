@@ -14,43 +14,51 @@
  * limitations under the License.
  */
 
-using FluentAssertions;
+using Jolt.Net.Functions;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using NSubstitute;
-using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jolt.Net.Test
 {
+    [Parallelizable(ParallelScope.All)]
+    public class StringsTest : AbstractTester
+    {
+        public static IEnumerable<TestCaseData> GetTestCases()
+        {
+            var SPLIT = new Jolt.Net.Functions.Strings.Split();
 
-#if FALSE
-    public class StringsTest extends AbstractTester {
+            var jnull = JValue.CreateNull();
+            object[][] tests = new object[][] {
+                new object[] { "split-invalid-null", SPLIT, null, null },
+                new object[] { "split-invalid-string", SPLIT, new JArray(""), null },
 
-      @DataProvider(parallel = true)
-      public Iterator<Object[]> getTestCases() {
-        List<Object[]> testCases = new LinkedList<>(  );
+                new object[] { "split-null-string", SPLIT, new JArray(",", jnull), null },
+                new object[] { "split-null-separator", SPLIT, new JArray(jnull, "test"), null },
 
-        Function SPLIT = new Strings.split();
+                new object[] { "split-empty-string", SPLIT, new JArray(",", ""), new JArray("") },
+                new object[] { "split-single-token-string", SPLIT, new JArray(",", "test"), new JArray("test") },
 
-        testCases.add( new Object[] {"split-invalid-null", SPLIT, null, Optional.empty() } );
-        testCases.add( new Object[] {"split-invalid-string", SPLIT, "", Optional.empty() } );
+                new object[] { "split-double-token-string", SPLIT, new JArray(",", "test,TEST"), new JArray("test", "TEST") },
+                new object[] { "split-multi-token-string", SPLIT, new JArray(",", "test,TEST,Test,TeSt"), new JArray("test", "TEST", "Test", "TeSt") },
+                new object[] { "split-spaced-token-string", SPLIT, new JArray(",", "test, TEST"), new JArray("test", " TEST") },
+                new object[] { "split-long-separator-spaced-token-string", SPLIT, new JArray(", ", "test, TEST"), new JArray("test", "TEST") },
 
-        testCases.add( new Object[] {"split-null-string", SPLIT, new Object[] {",", null}, Optional.empty() } );
-        testCases.add( new Object[] {"split-null-separator", SPLIT, new Object[] {null, "test"}, Optional.empty() } );
+                new object[] { "split-regex-token-string", SPLIT, new JArray("[eE]", "test,TEST"), new JArray("t", "st,T", "ST") },
+                new object[] { "split-regex2-token-string", SPLIT, new JArray("\\s+", "test TEST  Test    TeSt"), new JArray("test", "TEST", "Test", "TeSt") }
+            };
+            foreach (var test in tests)
+            {
+                yield return new TestCaseData(test.Skip(1).ToArray()) { TestName = $"RunTest({test[0]})" };
+            }
 
-        testCases.add( new Object[] {"split-empty-string", SPLIT, new Object[] {",", ""}, Optional.of( Arrays.asList("") ) } );
-        testCases.add( new Object[] {"split-single-token-string", SPLIT, new Object[] {",", "test"}, Optional.of( Arrays.asList("test") )} );
+        }
 
-        testCases.add( new Object[] {"split-double-token-string", SPLIT, new Object[] {",", "test,TEST"}, Optional.of( Arrays.asList("test", "TEST") )} );
-        testCases.add( new Object[] {"split-multi-token-string", SPLIT, new Object[] {",", "test,TEST,Test,TeSt"}, Optional.of( Arrays.asList("test", "TEST", "Test", "TeSt") )} );
-        testCases.add( new Object[] {"split-spaced-token-string", SPLIT, new Object[] {",", "test, TEST"}, Optional.of( Arrays.asList("test", " TEST") )} );
-        testCases.add( new Object[] {"split-long-separator-spaced-token-string", SPLIT, new Object[] {", ", "test, TEST"}, Optional.of( Arrays.asList("test", "TEST") )} );
-
-        testCases.add( new Object[] {"split-regex-token-string", SPLIT, new Object[] {"[eE]", "test,TEST"}, Optional.of( Arrays.asList("t", "st,T", "ST") )} );
-        testCases.add( new Object[] {"split-regex2-token-string", SPLIT, new Object[] {"\\s+", "test TEST  Test    TeSt"}, Optional.of( Arrays.asList("test", "TEST", "Test", "TeSt") )} );
-
-        return testCases.iterator();
-      }
+        [TestCaseSource(nameof(GetTestCases))]
+        public void RunTest(IFunction function, JToken args, JToken expected)
+        {
+            TestFunction(function, args, expected);
+        }
     }
-#endif
 }

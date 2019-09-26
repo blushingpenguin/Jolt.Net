@@ -100,7 +100,7 @@ namespace Jolt.Net
             _canonicalForm;
 
         // Visible for testing
-        public IReadOnlyList<object> getTokens() =>
+        public IReadOnlyList<object> GetTokens() =>
             _tokens;
 
         public string Evaluate(WalkedPath walkedPath)

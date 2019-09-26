@@ -14,64 +14,63 @@
  * limitations under the License.
  */
 using FluentAssertions;
+using FluentAssertions.Json;
 using NUnit.Framework;
-using NSubstitute;
 using System;
-using System.Collections.Generic;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class PathAndGroupReferenceTest {
+    [Parallelizable(ParallelScope.All)]
+    public class PathAndGroupReferenceTest
+    {
+        public static TestCaseData[] ValidReferenceTests = new TestCaseData[]
+        {
+            new TestCaseData(     "", 0, 0, "(0,0)"),
+            new TestCaseData(    "3", 3, 0, "(3,0)"),
+            new TestCaseData(  "(3)", 3, 0, "(3,0)"),
+            new TestCaseData("(1,2)", 1, 2, "(1,2)")
+        };
 
-        @DataProvider
-        public Object[][] getValidReferenceTests() {
-            return new Object[][] {
-                {     "", 0, 0, "(0,0)" },
-                {    "3", 3, 0, "(3,0)" },
-                {  "(3)", 3, 0, "(3,0)" },
-                {"(1,2)", 1, 2, "(1,2)" }
-            };
+        [TestCaseSource(nameof(ValidReferenceTests))]
+        public void ValidAmpReferencePatternTest(string key, int pathIndex, int keyGroup, string canonicalForm)
+        {
+            IPathAndGroupReference amp = new AmpReference("&" + key);
+            amp.GetPathIndex().Should().Be(pathIndex);
+            amp.GetKeyGroup().Should().Be(keyGroup);
+            amp.GetCanonicalForm().Should().Be($"&{canonicalForm}");
         }
 
-        @Test(dataProvider = "getValidReferenceTests")
-        public void validAmpReferencePatternTest(String key, int pathIndex, int keyGroup, String canonicalForm) {
-
-            PathAndGroupReference amp = new AmpReference("&" + key);
-            Assert.assertEquals(pathIndex, amp.getPathIndex());
-            Assert.assertEquals(keyGroup, amp.getKeyGroup());
-            Assert.assertEquals("&" + canonicalForm, amp.getCanonicalForm());
+        [TestCaseSource(nameof(ValidReferenceTests))]
+        public void ValidDollarReferencePatternTest(string key, int pathIndex, int keyGroup, string canonicalForm)
+        {
+            IPathAndGroupReference amp = new DollarReference("$" + key);
+            amp.GetPathIndex().Should().Be(pathIndex);
+            amp.GetKeyGroup().Should().Be(keyGroup);
+            amp.GetCanonicalForm().Should().Be($"${canonicalForm}");
         }
 
-        @Test(dataProvider = "getValidReferenceTests")
-        public void validDollarReferencePatternTest(String key, int pathIndex, int keyGroup, String canonicalForm) {
+        public static TestCaseData[] FailReferenceTests = new TestCaseData[]
+        {
+            new TestCaseData("pants"),
+            new TestCaseData("-1"),
+            new TestCaseData("(-1,2)"),
+            new TestCaseData("(1,-2)")
+        };
 
-            PathAndGroupReference amp = new DollarReference("$" + key);
-            Assert.assertEquals(pathIndex, amp.getPathIndex());
-            Assert.assertEquals(keyGroup, amp.getKeyGroup());
-            Assert.assertEquals("$" + canonicalForm, amp.getCanonicalForm());
+        [TestCaseSource(nameof(FailReferenceTests))]
+        public void FailAmpReferencePatternTest(String key)
+        {
+            FluentActions
+                .Invoking(() => new AmpReference("&" + key))
+                .Should().Throw<SpecException>();
         }
 
-
-        @DataProvider
-        public Object[][] getFailReferenceTests() {
-            return new Object[][] {
-                { "pants" },
-                { "-1" },
-                { "(-1,2)" },
-                { "(1,-2)" },
-            };
-        }
-
-        @Test(dataProvider = "getFailReferenceTests", expectedExceptions = SpecException.class  )
-        public void failAmpReferencePatternTest(String key) {
-            new AmpReference("&" + key);
-        }
-
-        @Test(dataProvider = "getFailReferenceTests", expectedExceptions = SpecException.class )
-        public void failDollarReferencePatternTest(String key) {
-            new DollarReference("$" + key);
+        [TestCaseSource(nameof(FailReferenceTests))]
+        public void FailDollarReferencePatternTest(String key) 
+        {
+            FluentActions
+                .Invoking(() => new DollarReference("$" + key))
+                .Should().Throw<SpecException>();
         }
     }
-#endif
 }

@@ -134,11 +134,11 @@ namespace Jolt.Net
             }
 
             // create input if it is null
-            if (input == null)
+            if (input == null || input.Type == JTokenType.Null)
             {
                 input = _specDataType.Create(inputKey, walkedPath, _opMode);
                 // if input has changed, wrap
-                if (input != null)
+                if (input != null && input.Type != JTokenType.Null)
                 {
                     inputOptional = input;
                 }

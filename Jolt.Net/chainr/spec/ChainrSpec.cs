@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 
 namespace Jolt.Net
@@ -45,7 +46,7 @@ namespace Jolt.Net
         /**
          * @param chainrSpec Plain vanilla hydrated JSON representation of a Chainr spec .json file.
          */
-        public ChainrSpec(JToken chainrSpec)
+        public ChainrSpec(JToken chainrSpec, IReadOnlyDictionary<string, Type> transforms)
         {
             if (!(chainrSpec is JArray operations))
             {
@@ -63,7 +64,7 @@ namespace Jolt.Net
             {
                 var chainrEntryObj = operations[index];
 
-                ChainrEntry entry = new ChainrEntry(index, chainrEntryObj);
+                ChainrEntry entry = new ChainrEntry(index, chainrEntryObj, transforms);
 
                 entries.Add(entry);
             }

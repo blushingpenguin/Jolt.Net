@@ -13,53 +13,51 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
 using FluentAssertions.Json;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using NSubstitute;
-using System;
 using System.Collections.Generic;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class ChainrContextTest 
+    [Parallelizable(ParallelScope.All)]
+    public class ChainrContextTest : JsonTest
     {
-        public object getTests() {
-
-            String testPath = "/json/chainr/context/spec_with_context.json";
-            JObject testSuite = JsonUtils.classpathToMap( testPath );
-
-            Object spec = testSuite.get( "spec" );
-            List<Map> tests = (List<Map>) testSuite.get( "tests" );
-
-            List<Object[]> accum = Lists.newLinkedList();
-
-            for ( Map testCase : tests ) {
-
-                String testCaseName = (String) testCase.get( "testCaseName" );
-                Object input = testCase.get( "input" );
-                Map<String,Object> context = (Map<String,Object>) testCase.get( "context" );
-                Object expected = testCase.get( "expected" );
-
-                accum.add( new Object[] { testCaseName, spec, input, context, expected } );
+        public static IEnumerable<TestCaseData> Tests
+        {
+            get
+            {
+                var testSuite = GetJson("chainr/context/spec_with_context");
+                
+                foreach (var testCase in testSuite["tests"])
+                {
+                    var name = testCase["testCaseName"].ToString();
+                    var tcd = new TestCaseData(
+                        name,
+                        testSuite["spec"],
+                        testCase["input"],
+                        (JObject)testCase["context"],
+                        testCase["expected"]
+                    );
+                    tcd.SetName($"RunTest({name})");
+                    yield return tcd;
+                }
             }
-
-            return accum.iterator();
         }
 
-        @Test( dataProvider = "getTests" )
-        public void successCase( String testCaseName, Object spec, Object input, Map<String,Object> context, Object expected ) throws IOException {
+        [TestCaseSource(nameof(Tests))]
+        public void RunTest(string testCaseName, JToken spec, JToken input, JObject context, JToken expected)
+        {
+            Chainr unit = Chainr.FromSpec( spec, TestTransforms.Transforms );
 
-            Chainr unit = Chainr.fromSpec( spec );
+            unit.HasContextualTransforms().Should().BeTrue();
+            unit.GetContextualTransforms().Count.Should().Be(2);
 
-            Assert.assertTrue( unit.hasContextualTransforms() );
-            Assert.assertEquals( unit.getContextualTransforms().size(), 2 );
+            var actual = unit.Transform( input, context );
 
-            Object actual = unit.transform( input, context );
-
-            JoltTestUtil.runDiffy( "failed case " + testCaseName, expected, actual );
+            actual.Should().BeEquivalentTo(expected);
         }
     }
-#endif
 }

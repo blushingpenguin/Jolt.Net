@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
 using FluentAssertions.Json;
-using NUnit.Framework;
-using NSubstitute;
-using System;
-using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
-using System.IO;
+using NUnit.Framework;
+using System;
 
 namespace Jolt.Net.Test
 {
@@ -42,7 +40,7 @@ namespace Jolt.Net.Test
         [TestCase("topLevelIsArray")]
         public void RunTest(string testCaseName)
         {
-            var testCase = GetTestCase(Path.Combine("json", "defaultr", testCaseName));
+            var testCase = GetTestCase($"defaultr/{testCaseName}");
             
             var defaultr = new Defaultr(testCase.Spec);
             var actual = defaultr.Transform(testCase.Input);
@@ -53,7 +51,7 @@ namespace Jolt.Net.Test
         [Test]
         public void DeepCopyTest()
         {
-            var testCase = GetTestCase(Path.Combine("json", "defaultr", "__deepCopyTest"));
+            var testCase = GetTestCase("defaultr/__deepCopyTest");
 
             Defaultr defaultr = new Defaultr(testCase.Spec);
             {
@@ -66,7 +64,7 @@ namespace Jolt.Net.Test
                 subMap["c"] = "c";
             }
             {
-                var testCase2 = GetTestCase(Path.Combine("json", "defaultr", "__deepCopyTest"));
+                var testCase2 = GetTestCase("defaultr/__deepCopyTest");
 
                 var actual = defaultr.Transform(testCase2.Input);
                 actual.Should().BeEquivalentTo(testCase2.Expected);

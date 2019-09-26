@@ -49,7 +49,7 @@ namespace Jolt.Net
         {
             var sub = traversalStep.Get(tree, key);
 
-            if (sub == null && op == TraversalStepOperation.SET)
+            if ((sub == null || sub.Type == JTokenType.Null) && op == TraversalStepOperation.SET)
             {
                 // get our child to make the container object, so it will be happy with it
                 sub = traversalStep.GetChild().NewContainer();

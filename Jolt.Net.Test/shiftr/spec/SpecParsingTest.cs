@@ -13,101 +13,96 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
+using FluentAssertions.Json;
 using NUnit.Framework;
-using NSubstitute;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class SpecParsingTest {
-
-        @DataProvider
-        public Object[][] RHSParsingTestsRemoveEscapes() throws IOException {
-            return new Object[][] {
+    [Parallelizable(ParallelScope.All)]
+    public class SpecParsingTest
+    {
+        public static IEnumerable<TestCaseData> RHSParsingTestsRemoveEscapes()
+        {
+            var tests = new object[][] {
+                new object[]
                 {
                     "simple, no escape",
                     "a.b.c",
-                    Arrays.asList( "a", "b", "c" ),
+                    new string[] { "a", "b", "c" },
                 },
+                new object[]
                 {
                     "ref and array, no escape",
                     "a.&(1,2).[]",
-                    Arrays.asList( "a", "&(1,2)", "[]" )
+                    new string[] { "a", "&(1,2)", "[]" }
                 },
+                new object[]
                 {
                     "single transpose, no escape",
                     "a.@(l.m.n).c",
-                    Arrays.asList( "a", "@(l.m.n)", "c" )
+                    new string[] { "a", "@(l.m.n)", "c" }
                 },
+                new object[]
                 {
                     "non-special char escape passes thru",
                     "a\\\\bc.def",
-                    Arrays.asList( "a\\bc", "def" )
+                    new string[] { "a\\bc", "def" }
                 },
+                new object[]
                 {
                     "single escape",
                     "a\\.b.c",
-                    Arrays.asList( "a.b", "c" )
+                    new string[] { "a.b", "c" }
                 },
+                new object[]
                 {
                     "escaping rhs",
                     "data.\\\\$rating-&1",
-                    Arrays.asList( "data", "\\$rating-&1" )
+                    new string[] { "data", "\\$rating-&1" }
                 },
+                new object[]
                 {
                     "@Class example",
                     "a.@Class.c",
-                    Arrays.asList( "a", "@(Class)", "c" )
+                    new string[] { "a", "@(Class)", "c" }
                 }
             };
+            foreach (var test in tests)
+            {
+                yield return new TestCaseData(test.Skip(1).ToArray()) { TestName = $"TestRHSParsingRemoveEscapes({test[0]})" };
+            }
         }
 
-        @Test(dataProvider = "RHSParsingTestsRemoveEscapes")
-        public void testRHSParsingRemoveEscapes( String testName, String unSweetendDotNotation, List<String> expected ) {
-
-            List<String> actual = SpecStringParser.parseDotNotation( Lists.<String>newArrayList(), SpecStringParser.stringIterator( unSweetendDotNotation ), unSweetendDotNotation );
-
-            Assert.assertEquals( actual, expected, "Failed test name " + testName );
+        [TestCaseSource(nameof(RHSParsingTestsRemoveEscapes))]
+        public void TestRHSParsingRemoveEscapes(string unSweetendDotNotation, string[] expected)
+        {
+            List<String> actual = SpecStringParser.ParseDotNotation(new List<string>(),
+                unSweetendDotNotation.GetEnumerator(), unSweetendDotNotation );
+            actual.Should().BeEquivalentTo(expected);
+        }
+        
+        [TestCase("\\@pants", "@pants", TestName = "TestRemoveEscapeChars(starts with escape)")]
+        [TestCase("rating-\\&pants", "rating-&pants", TestName = "TestRemoveEscapeChars(escape in the middle)")]
+        [TestCase("rating\\\\pants", "rating\\pants", TestName = "TestRemoveEscapeChars(escape the escape char)")]
+        public void TestRemoveEscapeChars(string input, string expected)
+        {
+            var actual = SpecStringParser.RemoveEscapeChars(input);
+            actual.Should().Be(expected);
         }
 
-        @DataProvider
-        public Object[][] removeEscapeCharsTests() throws IOException {
-
-            return new Object[][] {
-                { "starts with escape",     "\\@pants", "@pants" },
-                { "escape in the middle",   "rating-\\&pants", "rating-&pants" },
-                { "escape the escape char", "rating\\\\pants", "rating\\pants" },
-            };
-        }
-
-        @Test(dataProvider = "removeEscapeCharsTests" )
-        public void testRemoveEscapeChars( String testName, String input, String expected ) {
-
-            String actual = SpecStringParser.removeEscapeChars( input );
-            Assert.assertEquals( actual, expected, "Failed test name " + testName );
-        }
-
-
-        @DataProvider
-        public Object[][] removeEscapedValuesTest() throws IOException {
-
-            return new Object[][] {
-                { "starts with escape",     "\\@pants", "pants" },
-                { "escape in the middle",   "rating-\\&pants", "rating-pants" },
-                { "escape the escape char", "rating\\\\pants", "ratingpants" },
-                { "escape the array", "\\[\\]pants", "pants" },
-            };
-        }
-
-        @Test(dataProvider = "removeEscapedValuesTest" )
-        public void testEscapeParsing( String testName, String input, String expected ) {
-
-            String actual = SpecStringParser.removeEscapedValues( input );
-            Assert.assertEquals( actual, expected, "Failed test name " + testName );
+        [TestCase("\\@pants", "pants", TestName = "TestEscapeParsing(starts with escape)")]
+        [TestCase("rating-\\&pants", "rating-pants", TestName = "TestEscapeParsing(escape in the middle)")]
+        [TestCase("rating\\\\pants", "ratingpants", TestName = "TestEscapeParsing(escape the escape char)")]
+        [TestCase("\\[\\]pants", "pants", TestName = "TestEscapeParsing(escape the array)")]
+        public void TestEscapeParsing(string input, string expected)
+        {
+            var actual = SpecStringParser.RemoveEscapedValues(input);
+            actual.Should().Be(expected);
         }
     }
-#endif
 }

@@ -34,7 +34,8 @@ namespace Jolt.Net
          * @param subSequence to find occurrence of
          * @return num of occurrences of subSequence in sourceSequence
          */
-        public static int CountMatches(string sourceSequence, string subSequence) {
+        public static int CountMatches(string sourceSequence, string subSequence) 
+        {
             if (String.IsNullOrEmpty(sourceSequence) || String.IsNullOrEmpty(subSequence) || 
                 sourceSequence.Length < subSequence.Length)
             {

@@ -13,107 +13,99 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
+using FluentAssertions.Json;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using NSubstitute;
 using System;
 using System.Collections.Generic;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class SortrTest {
+    [Parallelizable(ParallelScope.All)]
+    public class SortrTest : JsonTest
+    {
+        [TestCase("simple")]
+        public void RunTestCases(string testCaseName)
+        {
+            var testPath = $"sortr/{testCaseName}";
+            var input = GetJson($"{testPath}/input");
+            var expected = GetJson($"{testPath}/output");
 
-        @DataProvider
-        public Object[][] getTestCaseNames() {
-            return new Object[][] {
-                { "simple" }
-            };
-        }
+            var sortr = new Sortr();
+            var actual = sortr.Transform(input);
 
-        @Test(dataProvider = "getTestCaseNames")
-        public void runTestCases(String testCaseName) throws IOException {
-
-            if ("".equals( testCaseName )) {
-                return;
-            }
-
-            String testPath = "/json/sortr/"+testCaseName;
-            JObject input = JsonUtils.classpathToMap(testPath + "/input.json");
-            JObject expected = JsonUtils.classpathToMap( testPath + "/output.json" );
-
-            Sortr sortr = new Sortr();
-            JObject actual = (JObject) sortr.transform( input );
-
-            JoltTestUtil.runDiffy( "Make sure it is still the same object : " + testPath, expected, actual );
+            actual.Should().BeEquivalentTo(expected, "it should be the same object");
 
             // Make sure the sort actually worked.
-            String orderErrorMessage = verifyOrder( actual, expected );
-            Assert.assertNull( orderErrorMessage, orderErrorMessage );
+            var orderErrorMessage = VerifyOrder(actual, expected);
+            orderErrorMessage.Should().BeNull(orderErrorMessage);
         }
 
-        public static String verifyOrder( Object actual, Object expected ) {
-            if ( actual instanceof Map && expected instanceof Map ) {
-                return verifyMapOrder( (JObject) actual, (JObject) expected );
-            } else if ( actual instanceof List && expected instanceof List ) {
-                return verifyListOrder( (List<Object>) actual, (List<Object>) expected ) ;
-            } else {
-                return null;
+        public static string VerifyOrder(JToken actual, JToken expected)
+        {
+            if (actual.Type == JTokenType.Object && expected.Type == JTokenType.Object)
+            {
+                return VerifyMapOrder((JObject)actual, (JObject)expected);
+            }
+            else if (actual.Type == JTokenType.Array && expected.Type == JTokenType.Array)
+            {
+                return VerifyListOrder((JArray)actual, (JArray)expected);
+            }
+            return null;
+        }
+
+        private static string VerifyMapOrder(JObject actualMap, JObject expectedMap)
+        {
+            var actualIter = actualMap.GetEnumerator();
+            var expectedIter = expectedMap.GetEnumerator();
+            for (; ; )
+            {
+                bool actualHasValue = actualIter.MoveNext();
+                bool expectedHasValue = expectedIter.MoveNext();
+                if (actualHasValue != expectedHasValue)
+                {
+                    return "actual and expected objects differ in length";
+                }
+                if (!expectedHasValue)
+                {
+                    return null;
+                }
+
+                var actual = actualIter.Current;
+                var expected = expectedIter.Current;
+
+                if (actual.Key != expected.Key)
+                {
+                    return "Found out of order keys '" + actual.Key + "' and '" + expected.Key + "'";
+                }
+
+                string result = VerifyOrder(actual.Value, expected.Value);
+                if (result != null)
+                {
+                    return result;
+                }
             }
         }
 
-        private static String verifyMapOrder( Map<String,Object> actual, Map<String,Object> expected ) {
+        private static string VerifyListOrder(JArray actual, JArray expected)
+        {
+            if (actual.Count != expected.Count)
+            {
+                return "actual and expected arrays have different sizes";
+            }
 
-            Iterator<String> actualIter = actual.keySet().iterator();
-            Iterator<String> expectedIter = expected.keySet().iterator();
-
-            for( int index = 0; index < actual.size(); index++ ) {
-                String actualKey = actualIter.next();
-                String expectedKey = expectedIter.next();
-
-                if ( ! StringUtils.equals( actualKey, expectedKey ) ) {
-                    return "Found out of order keys '" + actualKey + "' and '" + expectedKey + "'";
-                }
-
-                String result = verifyOrder( actual.get( actualKey), expected.get(expectedKey) );
-                if ( result != null ) {
+            for (int index = 0; index < actual.Count; index++)
+            {
+                string result = VerifyOrder(actual[index], expected[index]);
+                if (result != null)
+                {
                     return result;
                 }
             }
 
             return null; // success
-        }
-
-        private static String verifyListOrder( List<Object> actual, List<Object> expected ) {
-
-            for( int index = 0; index < actual.size(); index++ ) {
-                String result = verifyOrder( actual.get( index ), expected.get(index) );
-                if ( result != null ) {
-                    return result;
-                }
-            }
-
-            return null; // success
-        }
-
-        @Test
-        public void testDoesNotBlowUpOnUnmodifiableArray() {
-            List<Object> hasNan = new ArrayList<>();
-            hasNan.add( 1 );
-            hasNan.add( Double.NaN );
-            hasNan.add( 2 );
-
-            Map<String,Object> map = new HashMap<>();
-            map.put("a", "shouldBeFirst");
-            map.put("hasNan", Collections.unmodifiableList( hasNan ) );
-
-            try {
-                Sortr.sortJson( map );
-            }
-            catch( UnsupportedOperationException uoe ) {
-                Assert.fail( "Sort threw a UnsupportedOperationException" );
-            }
         }
     }
-#endif
 }

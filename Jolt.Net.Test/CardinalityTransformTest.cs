@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
 using FluentAssertions.Json;
-using NUnit.Framework;
-using NSubstitute;
-using System;
-using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
-using System.IO;
+using NUnit.Framework;
+using System;
 
 namespace Jolt.Net.Test
 {
@@ -33,7 +31,7 @@ namespace Jolt.Net.Test
         [TestCase("atTestData")]
         public void RunTest(string testCaseName)
         {
-            var testCase = GetTestCase(Path.Combine("json", "cardinality", testCaseName));
+            var testCase = GetTestCase($"cardinality/{testCaseName}");
             CardinalityTransform cardinality = new CardinalityTransform(testCase.Spec);
             var actual = cardinality.Transform(testCase.Input);
 
@@ -43,7 +41,7 @@ namespace Jolt.Net.Test
         [Test]
         public void TestSpecExceptions()
         {
-            var testCase = GetJson(Path.Combine("json", "cardinality", "failCardinalityType"));
+            var testCase = GetJson("cardinality/failCardinalityType");
             var spec = testCase["spec"];
 
             // Should throw exception

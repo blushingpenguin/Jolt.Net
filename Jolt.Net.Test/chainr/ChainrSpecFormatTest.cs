@@ -13,34 +13,70 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-using System;
-using System.Collections.Generic;
+using FluentAssertions;
+using FluentAssertions.Json;
+using NUnit.Framework;
 
 namespace Jolt.Net.Test
 {
+    [Parallelizable(ParallelScope.All)]
+    public class ChainrSpecFormatTest : JsonTest
+    {
+        public static readonly string[] TestCases = new[]
+        {
+            "bad_spec_arrayClassName",
+            "bad_spec_ClassName",
+            "bad_spec_NonTransformClass",
+            "bad_spec_empty"
+        };
 
-#if FALSE
-    public class ChainrSpecFormatTest {
-
-        @DataProvider
-        public Object[][] badFormatSpecs() throws IOException {
-            return new Object[][] {
-                    {JsonUtils.classpathToObject( "/json/chainr/specformat/bad_spec_arrayClassName.json" )},
-                    {JsonUtils.classpathToObject( "/json/chainr/specformat/bad_spec_ClassName.json" )},
-                    {JsonUtils.classpathToObject( "/json/chainr/specformat/bad_spec_NonTransformClass.json" )},
-                    {JsonUtils.classpathToObject( "/json/chainr/specformat/bad_spec_empty.json" )}
-            };
+        [TestCaseSource(nameof(TestCases))]
+        public void TestBadSpecs(string testCaseName)
+        {
+            var spec = GetJson($"chainr/specformat/{testCaseName}");
+            FluentActions
+                .Invoking(() => new ChainrSpec(spec, TestTransforms.Transforms))
+                .Should().Throw<SpecException>();
         }
 
-        @Test(dataProvider = "badFormatSpecs", expectedExceptions = SpecException.class )
-        public void testBadSpecs(Object chainrSpec) {
-            new ChainrSpec( chainrSpec );
+        [TestCaseSource(nameof(TestCases))]
+        public void StaticChainrMethodNoArgs(string testCaseName)
+        {
+            var spec = GetJson($"chainr/specformat/{testCaseName}");
+            FluentActions
+                .Invoking(() => Chainr.FromSpec(spec)) // should fail when parsing spec
+                .Should().Throw<SpecException>();
         }
 
-        @Test(dataProvider = "badFormatSpecs", expectedExceptions = SpecException.class )
-        public void staticChainrMethod(Object chainrSpec) {
-            Chainr.fromSpec( chainrSpec ); // should fail when parsing spec
+        [TestCaseSource(nameof(TestCases))]
+        public void StaticChainrMethodTransforms(string testCaseName)
+        {
+            var spec = GetJson($"chainr/specformat/{testCaseName}");
+            FluentActions
+                .Invoking(() => Chainr.FromSpec(spec, TestTransforms.Transforms)) // should fail when parsing spec
+                .Should().Throw<SpecException>();
+        }
+
+        [TestCaseSource(nameof(TestCases))]
+        public void StaticChainrMethodInstantiator(string testCaseName)
+        {
+            var spec = GetJson($"chainr/specformat/{testCaseName}");
+            FluentActions
+                .Invoking(() => Chainr.FromSpec(spec, new DefaultChainrInstantiator())) // should fail when parsing spec
+                .Should().Throw<SpecException>();
+        }
+
+        [TestCaseSource(nameof(TestCases))]
+        public void StaticChainrMethodInstantiatorAndTransforms(string testCaseName)
+        {
+            var spec = GetJson($"chainr/specformat/{testCaseName}");
+            FluentActions
+                .Invoking(() => Chainr.FromSpec(
+                    spec, 
+                    TestTransforms.Transforms,
+                    new DefaultChainrInstantiator()
+                )) // should fail when parsing spec
+                .Should().Throw<SpecException>();
         }
     }
-#endif
 }

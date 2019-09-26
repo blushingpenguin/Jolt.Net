@@ -116,7 +116,7 @@ namespace Jolt.Net
          *  for the traversal.  This is determined by the behavior of the implementations of the
          *  abstract methods of this class.
          */
-        public JToken Get(JToken tree, List<string> keys)
+        public JToken Get(JToken tree, IList<string> keys)
         {
             if (keys.Count != _traversaLength)
             {
@@ -131,7 +131,7 @@ namespace Jolt.Net
          * @param data JSON style data object you want to set
          * @return returns the data object if successfully set, otherwise null if there was a problem walking the path
          */
-        public JToken Set(JToken tree, List<string> keys, JToken data)
+        public JToken Set(JToken tree, IList<string> keys, JToken data)
         {
             if (keys.Count != _traversaLength)
             {
@@ -158,7 +158,7 @@ namespace Jolt.Net
          *  for the traversal.  This is determined by the behavior of the implementations of the
          *  abstract methods of this class.
          */
-        public JToken Remove(JToken tree, List<string> keys)
+        public JToken Remove(JToken tree, IList<string> keys)
         {
             if (keys.Count != _traversaLength)
             {

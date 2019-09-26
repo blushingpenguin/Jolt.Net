@@ -18,7 +18,9 @@ using FluentAssertions.Json;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
+using System;
 using System.IO;
+using System.Reflection;
 
 namespace Jolt.Net.Test
 {
@@ -31,14 +33,21 @@ namespace Jolt.Net.Test
 
     public class JsonTest
     {
-        public JObject GetJson(string name)
+        public static JToken GetJson(string name)
         {
-            string file = Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", name + ".json");
-            using (var fs = File.Open(file, FileMode.Open, FileAccess.Read, FileShare.Read))
+            name = $"../../../json/{name}.json";
+            name = Path.Combine(name.Split('/'));
+
+            // https://github.com/nunit/nunit/issues/3148
+            // sigh. why make it hard?
+            var testDirectory = Path.GetDirectoryName(new Uri(typeof(JsonTest).Assembly.CodeBase).LocalPath);
+            name = Path.Combine(testDirectory, name);
+
+            using (var fs = File.Open(name, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (var sr = new StreamReader(fs))
             using (var jr = new JsonTextReader(sr))
             {
-                return JObject.Load(jr);
+                return JToken.Load(jr);
             }
         }
 

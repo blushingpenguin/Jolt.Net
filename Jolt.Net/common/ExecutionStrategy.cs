@@ -68,7 +68,7 @@ namespace Jolt.Net
             {
                 ProcessList(spec, list, walkedPath, output, context);
             }
-            else if (input != null)
+            else if (input != null && input.Type != JTokenType.Null)
             {
                 // if not a map or list, must be a scalar
                 ProcessScalar(spec, ToString(input), walkedPath, output, context);
@@ -201,12 +201,13 @@ namespace Jolt.Net
                 //  we are annoyed, but we don't stop the whole transform.
                 // Just this part of the Transform won't work.
                 if (Int32.TryParse(kv.Key, out int keyInt) &&
-                    keyInt < inputList.Count)
+                    keyInt >= 0 && keyInt < inputList.Count)
                 {
                     // if the input in not available in the list use null or else get value,
                     // then lookup and place a default value as defined in spec there
                     JToken subInput = inputList[keyInt];
-                    if ( subInput != null || !originalSize.HasValue || keyInt < originalSize.Value )
+                    if ( (subInput != null && subInput.Type != JTokenType.Null) |
+                         !originalSize.HasValue || keyInt < originalSize.Value )
                     {
                         subInputOptional = subInput;
                     }

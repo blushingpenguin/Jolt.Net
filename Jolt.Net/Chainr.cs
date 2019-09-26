@@ -89,9 +89,19 @@ namespace Jolt.Net
             return new ChainrBuilder(input).Build();
         }
 
+        public static Chainr FromSpec(JToken input, IReadOnlyDictionary<string, Type> transforms)
+        {
+            return new ChainrBuilder(input).Transforms(transforms).Build();
+        }
+
         public static Chainr FromSpec(JToken input, IChainrInstantiator instantiator)
         {
             return new ChainrBuilder(input).Loader(instantiator).Build();
+        }
+
+        public static Chainr FromSpec(JToken input, IReadOnlyDictionary<string, Type> transforms, IChainrInstantiator instantiator)
+        {
+            return new ChainrBuilder(input).Transforms(transforms).Loader(instantiator).Build();
         }
 
         /**

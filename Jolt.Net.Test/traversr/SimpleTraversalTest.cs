@@ -13,208 +13,234 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
+using FluentAssertions.Json;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using NSubstitute;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jolt.Net.Test
 {
-    #if FALSE
-    public class SimpleTraversalTest {
-
-        @DataProvider
-        public Object[][] inAndOutTestCases() throws Exception {
-            return new Object[][] {
+    [Parallelizable(ParallelScope.All)]
+    public class SimpleTraversalTest 
+    {
+        private static IEnumerable<TestCaseData> CreateTestCases(string testName)
+        {
+            var tests = new object[][]
+            {
+                new object[]
                 {
                     "Simple Map Test",
-                    SimpleTraversal.newTraversal( "a.b" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : null }" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : \"tuna\" } }" ),
-                    "tuna"
+                    SimpleTraversal.NewTraversal( "a.b" ),
+                    JToken.Parse( "{ \"a\" : null }" ),
+                    JToken.Parse( "{ \"a\" : { \"b\" : \"tuna\" } }" ),
+                    new JValue("tuna")
                 },
+                new object[]
                 {
                     "Simple explicit array test",
-                    SimpleTraversal.newTraversal( "a.[1].b" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : null }" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : [ null, { \"b\" : \"tuna\" } ] }" ),
-                    "tuna"
+                    SimpleTraversal.NewTraversal( "a.[1].b" ),
+                    JToken.Parse( "{ \"a\" : null }" ),
+                    JToken.Parse( "{ \"a\" : [ null, { \"b\" : \"tuna\" } ] }" ),
+                    new JValue("tuna")
                 },
+                new object[]
                 {
                     "Leading Array test",
-                    SimpleTraversal.newTraversal( "[0].a" ),
-                    JsonUtils.jsonToObject( "[ ]" ),
-                    JsonUtils.jsonToObject( "[ { \"a\" : \"b\" } ]" ),
-                    "b"
+                    SimpleTraversal.NewTraversal( "[0].a" ),
+                    JToken.Parse( "[ ]" ),
+                    JToken.Parse( "[ { \"a\" : \"b\" } ]" ),
+                    new JValue("b")
                 },
+                new object[]
                 {
                     "Auto expand array test",
-                    SimpleTraversal.newTraversal( "a.[].b" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : null }" ),
-                    JsonUtils.jsonToMap( "{ \"a\" : [ { \"b\" : null } ] }" ),
+                    SimpleTraversal.NewTraversal( "a.[].b" ),
+                    JToken.Parse( "{ \"a\" : null }" ),
+                    JToken.Parse( "{ \"a\" : [ { \"b\" : null } ] }" ),
                     null
                 }
             };
+            foreach (var test in tests)
+            {
+                yield return new TestCaseData(test.Skip(1).ToArray()) { TestName = $"{testName}({test[0]})" };
+            }
         }
 
-        @Test( dataProvider = "inAndOutTestCases")
-        public void getTests( String testDescription, SimpleTraversal simpleTraversal, Object ignoredForTest, Object input, String expected ) throws IOException {
+        public static IEnumerable<TestCaseData> SetTestCases() =>
+            CreateTestCases("SetTests");
 
-            Object original = JsonUtils.cloneJson( input );
-            Object tree = JsonUtils.cloneJson( input );
+        public static IEnumerable<TestCaseData> GetTestCases() =>
+            CreateTestCases("GetTests");
 
-            Optional actual = simpleTraversal.get( tree );
-
-            Assert.assertEquals( expected, actual.get() );
-            JoltTestUtil.runDiffy( "Get should not have modified the input", original, tree );
-        }
-
-        @Test( dataProvider = "inAndOutTestCases")
-        public void setTests( String testDescription, SimpleTraversal simpleTraversal, Object start, Object expected, String toSet ) {
-
-            Object actual = JsonUtils.cloneJson( start );
-
-            Assert.assertEquals( toSet, simpleTraversal.set( actual, toSet ).get() ); // set should be successful
-
-            Assert.assertEquals( expected, actual );
-        }
-
-        @Test
-        public void testAutoArray() throws IOException
+        [TestCaseSource(nameof(GetTestCases))]
+        public void GetTests(SimpleTraversal simpleTraversal, JToken ignoredForTest, JToken input, JToken expected)
         {
-            SimpleTraversal<String> traversal = SimpleTraversal.newTraversal( "a.[].b" );
+            var original = input.DeepClone();
+            var tree = input.DeepClone();
 
-            Object expected = JsonUtils.jsonToMap( "{ \"a\" : [ { \"b\" : \"one\" }, { \"b\" : \"two\" } ] }" );
+            var actual = simpleTraversal.Get(tree);
 
-            Object actual = new HashMap();
+            expected.Should().BeEquivalentTo(actual);
+            original.Should().BeEquivalentTo(tree, "Get should not have modified the input");
+        }
 
-            Assert.assertFalse( traversal.get( actual ).isPresent() );
-            Assert.assertEquals( 0, ((HashMap) actual).size() ); // get didn't add anything
+        [TestCaseSource(nameof(SetTestCases))]
+        public void SetTests(SimpleTraversal simpleTraversal, JToken start, JToken expected, JToken toSet) 
+        {
+            var actual = start.DeepClone();
+
+            simpleTraversal.Set(actual, toSet).Should().BeEquivalentTo(toSet); // set should be successful
+
+            actual.Should().BeEquivalentTo(actual);
+        }
+
+        [Test]
+        public void TestAutoArray()
+        {
+            var traversal = SimpleTraversal.NewTraversal( "a.[].b" );
+
+            var expected = JToken.Parse( "{ \"a\" : [ { \"b\" : \"one\" }, { \"b\" : \"two\" } ] }" );
+
+            var actual = new JObject();
+
+            traversal.Get(actual).Should().BeNull();
+            actual.Count.Should().Be(0); // get didn't add anything
 
             // Add two things and validate the Auto Expand array
-            Assert.assertEquals( "one", traversal.set( actual, "one" ).get() );
-            Assert.assertEquals( "two", traversal.set( actual, "two" ).get() );
+            traversal.Set(actual, "one").Should().BeEquivalentTo(JValue.CreateString("one"));
+            traversal.Set(actual, "two").Should().BeEquivalentTo(JValue.CreateString("two"));
 
-            JoltTestUtil.runDiffy( expected, actual );
+            actual.Should().BeEquivalentTo(expected);
         }
 
-        @Test
-        public void testOverwrite() throws IOException
+        [Test]
+        public void TestOverwrite()
         {
-            SimpleTraversal<String> traversal = SimpleTraversal.newTraversal( "a.b" );
+            var traversal = SimpleTraversal.NewTraversal( "a.b" );
 
-            Object actual = JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : \"tuna\" } }" );
-            Object expectedOne = JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : \"one\" } }" );
-            Object expectedTwo = JsonUtils.jsonToMap( "{ \"a\" : { \"b\" : \"two\" } }" );
+            var actual = JToken.Parse( "{ \"a\" : { \"b\" : \"tuna\" } }" );
+            var expectedOne = JToken.Parse( "{ \"a\" : { \"b\" : \"one\" } }" );
+            var expectedTwo = JToken.Parse( "{ \"a\" : { \"b\" : \"two\" } }" );
 
-            Assert.assertEquals( "tuna", traversal.get( actual ).get() );
+            traversal.Get(actual).Should().BeEquivalentTo(JValue.CreateString("tuna"));
 
             // Set twice and verify that the sets did in fact overwrite
-            Assert.assertEquals( "one", traversal.set( actual, "one" ).get() );
-            JoltTestUtil.runDiffy( expectedOne, actual );
+            traversal.Set(actual, "one").Should().BeEquivalentTo(JValue.CreateString("one"));
+            actual.Should().BeEquivalentTo(expectedOne);
 
-            Assert.assertEquals( "two", traversal.set( actual, "two" ).get() );
-            JoltTestUtil.runDiffy( expectedTwo, actual );
+            traversal.Set(actual, "two").Should().BeEquivalentTo(JValue.CreateString("two"));
+            actual.Should().BeEquivalentTo(expectedTwo);
         }
 
-        @DataProvider
-        public Object[][] removeTestCases() throws Exception {
-            return new Object[][] {
+        public static IEnumerable<TestCaseData> RemoveTestCases()
+        {
+            return new TestCaseData[]
+            {
+                new TestCaseData(
+                    SimpleTraversal.NewTraversal( "__queryContext" ),
+                    JObject.Parse("{ 'Id' : '1234', '__queryContext' : { 'catalogLin' : [ 'a', 'b' ] } }" ),
+                    JObject.Parse("{ 'Id' : '1234' }" ),
+                    JObject.Parse("{ 'catalogLin' : [ 'a', 'b' ] }" )
+                )
                 {
-                    "Inception Map Test",
-                    SimpleTraversal.newTraversal( "__queryContext" ),
-                    JsonUtils.javason( "{ 'Id' : '1234', '__queryContext' : { 'catalogLin' : [ 'a', 'b' ] } }" ),
-                    JsonUtils.javason( "{ 'Id' : '1234' }" ),
-                    JsonUtils.javason( "{ 'catalogLin' : [ 'a', 'b' ] }" )
+                    TestName = "RemoveTests(Inception Map Test)"
                 },
+                new TestCaseData(
+                    SimpleTraversal.NewTraversal( "a.list.[1]" ),
+                    JObject.Parse("{ 'a' : { 'list' : [ 'a', 'b', 'c' ] } }" ),
+                    JObject.Parse("{ 'a' : { 'list' : [ 'a', 'c' ] } }" ),
+                    new JValue("b")
+                )
                 {
-                    "List Test",
-                    SimpleTraversal.newTraversal( "a.list.[1]" ),
-                    JsonUtils.javason( "{ 'a' : { 'list' : [ 'a', 'b', 'c' ] } }" ),
-                    JsonUtils.javason( "{ 'a' : { 'list' : [ 'a', 'c' ] } }" ),
-                    "b"
+                    TestName = "RemoveTests(List Test)"
                 },
+                new TestCaseData(
+                    SimpleTraversal.NewTraversal( "a.list" ),
+                    JObject.Parse("{ 'a' : { 'list' : [ 'a', 'b', 'c' ] } }" ),
+                    JObject.Parse("{ 'a' : { } }" ),
+                    new JArray( "a","b","c" )
+                )
                 {
-                    "Map leave empty Map",
-                    SimpleTraversal.newTraversal( "a.list" ),
-                    JsonUtils.javason( "{ 'a' : { 'list' : [ 'a', 'b', 'c' ] } }" ),
-                    JsonUtils.javason( "{ 'a' : { } }" ),
-                    Arrays.asList( "a","b","c" )
+                    TestName = "RemoveTests(Map leave empty Map)"
                 },
+                new TestCaseData(
+                    SimpleTraversal.NewTraversal( "a.list.[0]" ),
+                    JObject.Parse("{ 'a' : { 'list' : [ 'a' ] } }" ),
+                    JObject.Parse("{ 'a' : { 'list' : [ ] } }" ),
+                    new JValue("a")
+                )
                 {
-                    "Map leave empty List",
-                    SimpleTraversal.newTraversal( "a.list.[0]" ),
-                    JsonUtils.javason( "{ 'a' : { 'list' : [ 'a' ] } }" ),
-                    JsonUtils.javason( "{ 'a' : { 'list' : [ ] } }" ),
-                    "a"
+                    TestName = "RemoveTestsMap leave empty List)"
                 }
             };
         }
 
-        @Test( dataProvider = "removeTestCases")
-        public void removeTests( String testDescription, SimpleTraversal simpleTraversal,
-                                 Object start, Object expectedLeft, Object expectedReturn )
-                                 throws Exception
+        [TestCaseSource(nameof(RemoveTestCases))]
+        public void RemoveTests(SimpleTraversal simpleTraversal,
+                                 JToken start, JToken expectedLeft, JToken expectedReturn)
         {
-
-            Optional<Object> actualRemoveOpt = simpleTraversal.remove( start );
-            JoltTestUtil.runDiffy( testDescription, expectedReturn, actualRemoveOpt.get() );
-
-            JoltTestUtil.runDiffy( testDescription, expectedLeft, start );
+            var actualRemoveOpt = simpleTraversal.Remove(start);
+            actualRemoveOpt.Should().BeEquivalentTo(expectedReturn);
+            start.Should().BeEquivalentTo(expectedLeft);
         }
 
-        @Test(expectedExceptions = ClassCastException.class)
-        public void exceptionTestListIsMap() throws Exception
+        [Test]
+        public void ExceptionTestListIsMap()
         {
-            Object tree = JsonUtils.javason( "{ 'Id' : '1234', '__queryContext' : { 'catalogLin' : [ 'a', 'b' ] } }" );
-
-            SimpleTraversal<List> trav = SimpleTraversal.newTraversal( "__queryContext" );
+            var tree = JObject.Parse("{ 'Id' : '1234', '__queryContext' : { 'catalogLin' : [ 'a', 'b' ] } }" );
+            var trav = SimpleTraversal.NewTraversal( "__queryContext" );
             // barfs here, needs the 'List list =' part to trigger it
-            @SuppressWarnings( "unused" )
-            List list = trav.get( tree ).get();
+            FluentActions
+                .Invoking(() => (JArray)trav.Get(tree))
+                .Should().Throw<InvalidCastException>();
         }
 
-        @Test(expectedExceptions = ClassCastException.class)
-        public void exceptionTestMapIsList() throws Exception
+        [Test]
+        public void ExceptionTestMapIsList()
         {
-            Object tree = JsonUtils.javason( "{ 'Id' : '1234', '__queryContext' : { 'catalogLin' : [ 'a', 'b' ] } }" );
+            var tree = JObject.Parse("{ 'Id' : '1234', '__queryContext' : { 'catalogLin' : [ 'a', 'b' ] } }" );
 
-            SimpleTraversal<Map> trav = SimpleTraversal.newTraversal( "__queryContext.catalogLin" );
+            var trav = SimpleTraversal.NewTraversal( "__queryContext.catalogLin" );
             // barfs here, needs the 'Map map =' part to trigger it
-            @SuppressWarnings( "unused" )
-            Map map = trav.get( tree ).get();
+            FluentActions
+                .Invoking(() => (JObject)trav.Get(tree))
+                .Should().Throw<InvalidCastException>();
         }
 
-        @Test(expectedExceptions = ClassCastException.class)
-        public void exceptionTestListIsMapErasure() throws Exception
+        [Test]
+        public void ExceptionTestListIsMapErasure()
         {
-            Object tree = JsonUtils.javason( "{ 'Id' : '1234', '__queryContext' : { 'catalogLin' : [ 'a', 'b' ] } }" );
+            var tree = JObject.Parse("{ 'Id' : '1234', '__queryContext' : { 'catalogLin' : [ 'a', 'b' ] } }" );
 
-            SimpleTraversal<Map<String,Map>> trav = SimpleTraversal.newTraversal( "__queryContext" );
+            var trav = SimpleTraversal.NewTraversal( "__queryContext" );
+            
             // this works
-            Map<String,Map> queryContext = trav.get( tree ).get();
+            var queryContext = (JObject)trav.Get(tree);
 
             // this does not
-            @SuppressWarnings( "unused" )
-            Map catalogLin = queryContext.get( "catalogLin" );
-            Assert.fail( "Expected ClassCast Exception");
+            FluentActions
+                .Invoking(() => (JObject)queryContext["catalogLin"])
+                .Should().Throw<InvalidCastException>();
         }
 
-        @Test(expectedExceptions = ClassCastException.class)
-        public void exceptionTestLMapIsListErasure() throws Exception
+        [Test]
+        public void ExceptionTestLMapIsListErasure()
         {
-            Object tree = JsonUtils.javason( "{ 'Id' : '1234', '__queryContext' : { 'catalogLin' : { 'a' : 'b' } } }" );
+            var tree = JObject.Parse("{ 'Id' : '1234', '__queryContext' : { 'catalogLin' : { 'a' : 'b' } } }" );
 
-            SimpleTraversal<Map<String,List>> trav = SimpleTraversal.newTraversal( "__queryContext" );
+            var trav = SimpleTraversal.NewTraversal( "__queryContext" );
+
             // this works
-            Map<String,List> queryContext = trav.get( tree ).get();
+            var queryContext = (JObject)trav.Get(tree);
 
             // this does not
-            @SuppressWarnings( "unused" )
-            List catalogLin = queryContext.get( "catalogLin" );
-            Assert.fail( "Expected ClassCast Exception");
+            FluentActions
+                .Invoking(() => (JArray)queryContext["catalogLin"])
+                .Should().Throw<InvalidCastException>();
         }
     }
-#endif
 }

@@ -110,7 +110,7 @@ namespace Jolt.Net.Functions.Math
         public Min() : base(
             (long? min, long val) => min.HasValue ? System.Math.Min(min.Value, val) : val,
             (double? min, double val) => min.HasValue ? System.Math.Min(min.Value, val) : val,
-            (double a, long b) => a > b)
+            (double a, long b) => a < b)
         {
         }
     }
@@ -197,14 +197,15 @@ namespace Jolt.Net.Functions.Math
             int sum = 0;
             foreach (var arg in args)
             {
-                if (arg.Type == JTokenType.Integer)
+                if (arg.Type == JTokenType.Integer ||
+                    arg.Type == JTokenType.Float)
                 {
                     sum += arg.Value<int>();
                 }
                 else if (arg.Type == JTokenType.String &&
-                         Int32.TryParse(arg.Value<string>(), out var intVal))
+                         Double.TryParse(arg.Value<string>(), out var doubleVal))
                 {
-                    sum += intVal;
+                    sum += (int)doubleVal;
                 }
             }
             return sum;
@@ -218,14 +219,14 @@ namespace Jolt.Net.Functions.Math
             long sum = 0;
             foreach (var arg in args)
             {
-                if (arg.Type == JTokenType.Integer)
+                if (arg.Type == JTokenType.Integer || arg.Type == JTokenType.Float)
                 {
                     sum += arg.Value<long>();
                 }
                 else if (arg.Type == JTokenType.String &&
-                         Int64.TryParse(arg.Value<string>(), out var intVal))
+                         Double.TryParse(arg.Value<string>(), out var doubleVal))
                 {
-                    sum += intVal;
+                    sum += (long)doubleVal;
                 }
             }
             return sum;
@@ -239,7 +240,7 @@ namespace Jolt.Net.Functions.Math
             double sum = 0;
             foreach (var arg in args)
             {
-                if (arg.Type == JTokenType.Integer)
+                if (arg.Type == JTokenType.Integer || arg.Type == JTokenType.Float)
                 {
                     sum += arg.Value<double>();
                 }
@@ -286,8 +287,8 @@ namespace Jolt.Net.Functions.Math
         protected override JToken ApplyList(JArray args)
         {
             if (args == null || args.Count != 2 ||
-                (args[0].Type != JTokenType.Integer && args[0].Type != JTokenType.Float) ||
-                (args[1].Type != JTokenType.Integer && args[1].Type != JTokenType.Float))
+                args[0].Type != JTokenType.Float ||
+                args[1].Type != JTokenType.Float)
             {
                 return null;
             }
@@ -326,7 +327,7 @@ namespace Jolt.Net.Functions.Math
             JToken result = Divide.DividePair(args);
             if (result != null)
             {
-                return System.Math.Round(result.Value<double>(), specialArg);
+                return System.Math.Round(result.Value<double>(), specialArg, MidpointRounding.AwayFromZero);
             }
             return result;
         }

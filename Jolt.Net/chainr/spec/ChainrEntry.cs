@@ -60,7 +60,7 @@ namespace Jolt.Net
          * @param chainrEntryObj the unknown object from the Chainr list
          * @param index the index of the chainrEntryObj, used in reporting errors
          */
-        public ChainrEntry(int index, JToken chainrEntryObj)
+        public ChainrEntry(int index, JToken chainrEntryObj, IReadOnlyDictionary<string, Type> transforms)
         {
             if (!(chainrEntryObj is JObject chainrEntryMap))
             {
@@ -76,9 +76,14 @@ namespace Jolt.Net
                 throw new SpecException("JOLT Chainr 'operation' must implement Transform or ContextualTransform" + GetErrorMessageIndexSuffix());
             }
 
-            if (!STOCK_TRANSFORMS.TryGetValue(opString, out Type type))
+            const string javaPrefix = "com.bazaarvoice.jolt.chainr.transforms.";
+            if (opString.StartsWith(javaPrefix))
             {
-                // TODO:
+                opString = opString.Substring(javaPrefix.Length);
+            }
+            if (!STOCK_TRANSFORMS.TryGetValue(opString, out Type type) &&
+                (transforms == null || !transforms.TryGetValue(opString, out type)))
+            {
                 throw new SpecException($"JOLT Chainr cannot find a handler for {opString}");
             }
 

@@ -46,7 +46,8 @@ namespace Jolt.Net
         /**
          * Builds LHS pathElement and validates to specification
          */
-        protected ModifierSpec(string rawJsonKey, OpMode opMode) {
+        protected ModifierSpec(string rawJsonKey, OpMode opMode) 
+        {
             string prefix = rawJsonKey.Substring(0, 1);
             string suffix = rawJsonKey.Length > 1 ? rawJsonKey.Substring(rawJsonKey.Length - 1) : null;
 
@@ -71,7 +72,8 @@ namespace Jolt.Net
             }
 
             _pathElement = PathElementBuilder.BuildMatchablePathElement(rawJsonKey);
-            if (!(_pathElement is IStarPathElement) && !(_pathElement is LiteralPathElement) && !(_pathElement is ArrayPathElement ) ) {
+            if (!(_pathElement is IStarPathElement) && !(_pathElement is LiteralPathElement) && !(_pathElement is ArrayPathElement))
+            {
                 throw new SpecException(opMode.GetName() + " cannot have " + _pathElement.GetType().Name + " RHS");
             }
         }

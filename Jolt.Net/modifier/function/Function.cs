@@ -155,7 +155,7 @@ namespace Jolt.Net.Functions
     {
         public JToken Apply(params JToken[] args)
         {
-            if (args.Length == 0 || args[0] == null)
+            if (args.Length == 0 || args[0] == null || args[0].Type == JTokenType.Null)
             {
                 return null;
             }
@@ -179,7 +179,7 @@ namespace Jolt.Net.Functions
     {
         public JToken Apply(params JToken[] args)
         {
-            if (args.Length == 0 || args[0] != null)
+            if (args.Length == 0 || (args[0] != null && args[0].Type == JTokenType.Null))
             {
                 return null;
             }

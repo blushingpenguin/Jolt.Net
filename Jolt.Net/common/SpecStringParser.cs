@@ -247,9 +247,7 @@ namespace Jolt.Net
                 // Parsing "@abc.def, return a canonical form of "@(abc)" and leave the "def" in the iterator
                 else if (c == '.')
                 {
-                    // sb.ToString().substring( 0, sb.Length() - 1)
-                    // MDW: not sure I parsed this correctly, just looks like sb.ToString()
-                    return "(" + sb.ToString() + ")";
+                    return "(" + sb.ToString(0, sb.Length - 1) + ")";
                 }
             }
 

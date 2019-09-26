@@ -95,11 +95,11 @@ namespace Jolt.Net
             JToken value = null;
             if (parent is JObject map && opMode.IsApplicable(map, keyOrIndex))
             {
-                map[keyOrIndex] = CreateValue();
+                map[keyOrIndex] = value = CreateValue();
             }
             else if (parent is JArray list && opMode.IsApplicable(list, index, origSizeOptional.Value))
             {
-                list[index] = CreateValue();
+                list[index] = value = CreateValue();
             }
             return value;
         }
@@ -137,7 +137,7 @@ namespace Jolt.Net
 
         public override bool IsCompatible(JToken input)
         {
-            return input == null || input is JArray;
+            return input == null || input.Type == JTokenType.Null || input is JArray;
         }
     }
 
@@ -149,7 +149,7 @@ namespace Jolt.Net
         protected override JToken CreateValue() => new JObject();
 
         public override bool IsCompatible(JToken input) =>
-            input == null || input is JObject;
+            input == null || input.Type == JTokenType.Null || input is JObject;
     }
 
     /**
@@ -158,7 +158,7 @@ namespace Jolt.Net
     public class RUNTIME : DataType
     {
         public override bool IsCompatible(JToken input) =>
-            input != null;
+            input != null && input.Type != JTokenType.Null;
         protected override JToken CreateValue() =>
             throw new InvalidOperationException("Cannot create for RUNTIME Type");
     }

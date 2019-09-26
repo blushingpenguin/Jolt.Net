@@ -21,7 +21,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Jolt.Net.Functions.Objects
 {
-    class ToInteger : SingleFunction
+    public class ToInteger : SingleFunction
     {
         protected override JToken ApplySingle(JToken arg)
         {
@@ -39,7 +39,7 @@ namespace Jolt.Net.Functions.Objects
         }
     }
 
-    class ToLong : SingleFunction
+    public class ToLong : SingleFunction
     {
         protected override JToken ApplySingle(JToken arg)
         {
@@ -57,7 +57,7 @@ namespace Jolt.Net.Functions.Objects
         }
     }
 
-    class ToDouble : SingleFunction
+    public class ToDouble : SingleFunction
     {
         protected override JToken ApplySingle(JToken arg)
         {
@@ -75,7 +75,7 @@ namespace Jolt.Net.Functions.Objects
         }
     }
 
-    class ToBoolean : SingleFunction
+    public class ToBoolean : SingleFunction
     {
         protected override JToken ApplySingle(JToken arg)
         {
@@ -99,7 +99,7 @@ namespace Jolt.Net.Functions.Objects
         }
     }
 
-    class ToString : SingleFunction
+    public class ToString : SingleFunction
     {
         private string TokenToString(JToken arg)
         {
@@ -131,7 +131,30 @@ namespace Jolt.Net.Functions.Objects
         }
     }
 
-    class SquashNulls : SingleFunction
+    public abstract class SquashFunction : IFunction
+    {
+        protected abstract JToken DoSquash(JToken arg);
+
+        public JToken Apply(params JToken[] args)
+        {
+            if (args.Length == 0)
+            {
+                return null;
+            }
+            if (args.Length == 1)
+            {
+                return DoSquash(args[0]);
+            }
+            var arr = new JArray();
+            foreach (var arg in args)
+            {
+                arr.Add(arg);
+            }
+            return DoSquash(arr);
+        }
+    }
+
+    public class SquashNulls : SquashFunction
     {
         public static JToken Squash(JToken arg)
         {
@@ -162,13 +185,13 @@ namespace Jolt.Net.Functions.Objects
             return arg;
         }
 
-        protected override JToken ApplySingle(JToken arg) =>
+        protected override JToken DoSquash(JToken arg) =>
             Squash(arg);
     }
 
-    public class RecursivelySquashNulls : SingleFunction
+    public class RecursivelySquashNulls : SquashFunction
     {
-        protected override JToken ApplySingle(JToken arg)
+        public static JToken Squash(JToken arg)
         {
             // Makes two passes thru the data.
             arg = SquashNulls.Squash(arg);
@@ -178,7 +201,7 @@ namespace Jolt.Net.Functions.Objects
                 var arr = (JArray)arg;
                 for (int i = 0; i < arr.Count; ++i)
                 {
-                    arr[i] = ApplySingle(arr[i]);
+                    arr[i] = Squash(arr[i]);
                 }
             }
             else if (arg.Type == JTokenType.Object)
@@ -186,11 +209,14 @@ namespace Jolt.Net.Functions.Objects
                 var obj = (JObject)arg;
                 foreach (var kv in obj)
                 {
-                    obj[kv.Key] = ApplySingle(kv.Value);
+                    obj[kv.Key] = Squash(kv.Value);
                 }
             }
             return arg;
         }
+
+        protected override JToken DoSquash(JToken arg) =>
+            Squash(arg);
     }
 
     /**

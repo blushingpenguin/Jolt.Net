@@ -13,25 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-using System;
-using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 
 namespace Jolt.Net.Test
 {
-    #if FALSE
-    public class GoodTestTransform implements SpecDriven, Transform {
+    public class GoodTestTransform : SpecDriven, ITransform
+    {
+        private readonly JToken _spec;
 
-        private final Object spec;
-
-        @Inject
-        public GoodTestTransform( Object spec ) {
-            this.spec = spec;
+        public GoodTestTransform(JToken spec)
+        {
+            _spec = spec;
         }
 
-        @Override
-        public Object transform( Object input ) {
-            return new TransformTestResult( input, spec );
+        public JToken Transform(JToken input)
+        {
+            return TransformTestResult.CreateResult(input, _spec);
         }
     }
-#endif
 }

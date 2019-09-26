@@ -58,7 +58,8 @@ namespace Jolt.Net
             _list = new List<PathStep>(c);
         }
 
-        public WalkedPath(JToken treeRef, MatchedElement matchedElement)
+        public WalkedPath(JToken treeRef, MatchedElement matchedElement) :
+            this()
         {
             Add(new PathStep(treeRef, matchedElement));
         }

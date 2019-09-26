@@ -13,15 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
 using FluentAssertions.Json;
 using NUnit.Framework;
-using NSubstitute;
 using System;
-using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
-using System.IO;
-using Newtonsoft.Json;
 
 namespace Jolt.Net.Test
 {
@@ -41,7 +37,7 @@ namespace Jolt.Net.Test
         [TestCase("array_removeJsonArrayFields")]
         public void RunTestCase(string testCaseName)
         {
-            var testCase = GetTestCase(Path.Combine("json", "removr", testCaseName));
+            var testCase = GetTestCase($"removr/{testCaseName}");
             Removr removr = new Removr(testCase.Spec);
             var actual = removr.Transform(testCase.Input);
             actual.Should().BeEquivalentTo(testCase.Expected);
@@ -50,7 +46,7 @@ namespace Jolt.Net.Test
         [TestCase("negativeTestCases")]
         public void RunNegativeTestCases(string testCaseName)
         {
-            var testCase = GetJson(Path.Combine("json", "removr", testCaseName));
+            var testCase = GetJson($"removr/{testCaseName}");
             Action a = () => new Removr(testCase["spec"]);
             a.Should().Throw<SpecException>();
         }

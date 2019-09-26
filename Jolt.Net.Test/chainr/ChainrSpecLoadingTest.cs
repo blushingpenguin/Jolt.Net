@@ -13,34 +13,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-using System;
-using System.Collections.Generic;
+using FluentAssertions;
+using FluentAssertions.Json;
+using NUnit.Framework;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class ChainrSpecLoadingTest {
-        @DataProvider
-        public Object[][] badFormatSpecs() throws IOException {
-            return new Object[][] {
-                    {JsonUtils.classpathToObject( "/json/chainr/specloading/bad_spec_SpecTransform.json" )}
-            };
-        }
+    [Parallelizable(ParallelScope.All)]
+    public class ChainrSpecLoadingTest : JsonTest
+    {
+        public static readonly string[] TestCases = new[]
+        {
+            "bad_spec_SpecTransform"
+        };
 
-        @Test(dataProvider = "badFormatSpecs", expectedExceptions = SpecException.class )
-        public void testBadSpecs( Object chainrSpecObj ) {
-            ChainrSpec chainrSpec = new ChainrSpec( chainrSpecObj );
-            ChainrEntry chainrEntry = chainrSpec.getChainrEntries().get( 0 );
+        [TestCaseSource(nameof(TestCases))]
+        public void TestBadSpecs(string testCaseName)
+        {
+            var spec = GetJson($"chainr/specloading/{testCaseName}");
+            ChainrSpec chainrSpec = new ChainrSpec(spec, TestTransforms.Transforms);
+            ChainrEntry chainrEntry = chainrSpec.GetChainrEntries()[0];
             DefaultChainrInstantiator instantiator = new DefaultChainrInstantiator();
 
             // This should fail
-            instantiator.hydrateTransform( chainrEntry );
+            FluentActions
+                .Invoking(() => instantiator.HydrateTransform(chainrEntry))
+                .Should().Throw<SpecException>();
         }
 
-        @Test(dataProvider = "badFormatSpecs", expectedExceptions = SpecException.class )
-        public void staticChainrMethod( Object chainrSpec ) {
-            Chainr.fromSpec( chainrSpec ); // should fail when parsing spec
+        [TestCaseSource(nameof(TestCases))]
+        public void StaticChainrMethod(string testCaseName)
+        {
+            var spec = GetJson($"chainr/specloading/{testCaseName}");
+            // should fail when parsing spec
+            FluentActions
+                .Invoking(() => Chainr.FromSpec(spec))
+                .Should().Throw<SpecException>();
         }
     }
-#endif
 }

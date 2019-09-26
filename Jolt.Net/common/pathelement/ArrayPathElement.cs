@@ -74,7 +74,8 @@ namespace Jolt.Net
                 else
                 {
                     aI = VerifyStringIsNonNegativeInteger(meat);
-                    if (aI != null) {
+                    if (aI != null) 
+                    {
                         apt = ArrayPathType.EXPLICIT_INDEX;
                         _canonicalForm = "[" + aI + "]";
                     }
@@ -138,7 +139,7 @@ namespace Jolt.Net
         {
             // Jolt should not throw any exceptions just because the input data does not match what is expected.
             // Thus the exception is being swallowed.
-            return Int32.TryParse(key, out var number) ? key : null;
+            return Int32.TryParse(key, out var number) && number >= 0 ? key : null;
         }
 
         public int? GetExplicitArrayIndex()

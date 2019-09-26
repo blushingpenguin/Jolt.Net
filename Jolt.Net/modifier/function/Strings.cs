@@ -204,7 +204,7 @@ namespace Jolt.Net.Functions.Strings
     {
         protected override JToken ApplyList(string source, JArray args)
         {
-            return PadString(true, source, args);
+            return PadString(false, source, args);
         }
     }
 }

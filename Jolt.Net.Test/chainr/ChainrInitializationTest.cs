@@ -13,87 +13,102 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using FluentAssertions;
+using FluentAssertions.Json;
+using Newtonsoft.Json.Linq;
+using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class ChainrInitializationTest {
-
-        @DataProvider
-        public Object[][] badTransforms() {
-            return new Object[][] {
-                {JsonUtils.classpathToObject(  "/json/chainr/transforms/bad_transform_loadsExplodingTransform.json" )}
-            };
+    [Parallelizable(ParallelScope.All)]
+    public class ChainrInitializationTest : JsonTest
+    {
+        [TestCase("bad_transform_loadsExplodingTransform")]
+        public void TestBadTransforms(string testCaseName)
+        {
+            var spec = GetJson($"chainr/transforms/{testCaseName}");
+            var unit = Chainr.FromSpec(spec, TestTransforms.Transforms);
+            Action a = () => unit.Transform((JToken)new JObject(), null);// should fail here
+            a.Should().Throw<TransformException>();
         }
 
-        @Test(dataProvider = "badTransforms", expectedExceptions = TransformException.class )
-        public void testBadTransforms(Object chainrSpec) {
-            Chainr unit = Chainr.fromSpec( chainrSpec );
-            unit.transform( new HashMap(), null );// should fail here
-            Assert.fail( "Should not have gotten here" );
+        [TestCase("loadsGoodTransform")]
+        public void TestPassing(string testCaseName)
+        {
+            var spec = GetJson($"chainr/transforms/{testCaseName}");
+            var unit = Chainr.FromSpec(spec, TestTransforms.Transforms);
+            JToken input = new JObject();
+            var result = unit.Transform(input, null);
+            result["input"].Should().BeEquivalentTo(input);
+            result["spec"].Should().NotBeNull();
         }
 
-        @DataProvider
-        public Object[][] passingTestCases() {
-            return new Object[][] {
-                {new Object(), JsonUtils.classpathToObject( "/json/chainr/transforms/loadsGoodTransform.json" )}
-            };
+        [Test]
+        public void ChainrBuilderFailsOnNullLoader()
+        {
+            var validSpec = GetJson("chainr/transforms/loadsGoodTransform");
+            Action a = () => new ChainrBuilder( validSpec ).Loader( null );
+            a.Should().Throw<ArgumentNullException>();
         }
 
-        @Test(dataProvider = "passingTestCases" )
-        public void testPassing(Object input, Object spec) {
-            Chainr unit = Chainr.fromSpec( spec );
-            TransformTestResult actual = (TransformTestResult) unit.transform( input, null );
-
-            Assert.assertEquals( input, actual.input );
-            Assert.assertNotNull( actual.spec );
+        [Test]
+        public void ChainrBuilderFailsOnNullTransforms()
+        {
+            var validSpec = GetJson("chainr/transforms/loadsGoodTransform");
+            Action a = () => new ChainrBuilder(validSpec).Transforms(null);
+            a.Should().Throw<ArgumentNullException>();
         }
 
-        @Test( expectedExceptions = IllegalArgumentException.class )
-        public void chainrBuilderFailsOnNullLoader() {
-
-            Object validSpec = JsonUtils.classpathToObject( "/json/chainr/transforms/loadsGoodTransform.json" );
-            new ChainrBuilder( validSpec ).loader( null );
+        [Test]
+        public void FailsOnNullListOfJoltTransforms()
+        {
+            Action a = () => new Chainr( null );
+            a.Should().Throw<ArgumentNullException>();
         }
 
-        @Test( expectedExceptions = IllegalArgumentException.class )
-        public void failsOnNullListOfJoltTransforms() {
-            new Chainr( null );
+        private class StupidTransform : IJoltTransform
+        {
         }
 
-        @Test( expectedExceptions = SpecException.class )
-        public void failsOnStupidTransform() {
-            List<JoltTransform> badSpec = Lists.newArrayList();
+        [Test]
+        public void FailsOnStupidTransform()
+        {
+            var badSpec = new List<IJoltTransform>();
 
             // Stupid JoltTransform that implements the base interface, and not one of the useful ones
-            badSpec.add( new JoltTransform() {} );
+            badSpec.Add(new StupidTransform());
 
-            new Chainr( badSpec );
+            FluentActions
+                .Invoking(() => new Chainr( badSpec ))
+                .Should().Throw<SpecException>();
         }
 
-        @Test( expectedExceptions = SpecException.class )
-        public void failsOnOverEagerTransform() {
-            List<JoltTransform> badSpec = Lists.newArrayList();
+        private class OverEagerTransform : ITransform, IContextualTransform
+        {
+            public JToken Transform(JToken input, JObject context)
+            {
+                return null;
+            }
+
+            public JToken Transform(JToken input)
+            {
+                return null;
+            }
+        }
+
+        [Test]
+        public void FailsOnOverEagerTransform()
+        {
+            var badSpec = new List<IJoltTransform>();
 
             // Stupid JoltTransform that implements both "real" interfaces
-            badSpec.add( new OverEagerTransform() );
+            badSpec.Add(new OverEagerTransform());
 
-            new Chainr( badSpec );
-        }
-
-        private static class OverEagerTransform implements Transform, ContextualTransform {
-            @Override
-            public Object transform( Object input, JObject context ) {
-                return null;
-            }
-
-            @Override
-            public Object transform( Object input ) {
-                return null;
-            }
+            FluentActions
+                .Invoking(() => new Chainr(badSpec))
+                .Should().Throw<SpecException>();
         }
     }
-#endif
 }

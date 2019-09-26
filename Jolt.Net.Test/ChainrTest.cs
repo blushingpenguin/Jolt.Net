@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
 using FluentAssertions.Json;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using NSubstitute;
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
-using System.IO;
 
 namespace Jolt.Net.Test
 {
@@ -47,24 +46,24 @@ namespace Jolt.Net.Test
             return activity;
         }
 
-#if FALSE
-        private JObject NewCustomJavaActivity( Class cls, Object spec ) {
-            JObject activity = new HashMap<>();
-            activity.put( ChainrEntry.OPERATION_KEY, cls.getName() );
-            if ( spec != null ) {
-                activity.put( ChainrEntry.SPEC_KEY, spec );
+        private static JObject NewCustomActivity(Type type, JObject spec)
+        {
+            var activity = new JObject(
+                new JProperty(ChainrEntry.OPERATION_KEY, type.Name)
+            );
+            if (spec != null && spec.Type != JTokenType.Null) 
+            {
+                activity[ChainrEntry.SPEC_KEY] = spec;
             }
-
             return activity;
         }
 
-        private List<Map<String,Object>> newCustomJavaChainrSpec( Class cls, Object delegateSpec )
+        private static JArray NewCustomChainrSpec(Type type, JObject delegateSpec)
         {
-            List<Map<String,Object>> retvalue = newChainrSpec();
-            retvalue.add( newCustomJavaActivity( cls, delegateSpec ) );
+            var retvalue = new JArray();
+            retvalue.Add(NewCustomActivity(type, delegateSpec));
             return retvalue;
         }
-#endif
 
         private static JArray NewShiftrChainrSpec(JToken shiftrSpec)
         {
@@ -97,7 +96,7 @@ namespace Jolt.Net.Test
         [Test]
         public void process_itCallsShiftr()
         {
-            var testCase = GetTestCase(Path.Combine("json", "shiftr", "queryMappingXform"));
+            var testCase = GetTestCase("shiftr/queryMappingXform");
 
             var chainrSpec = NewShiftrChainrSpec(testCase.Spec);
 
@@ -110,7 +109,7 @@ namespace Jolt.Net.Test
         [Test]
         public void process_itCallsDefaultr()
         {
-            var testCase = GetTestCase(Path.Combine("json", "defaultr", "firstSample"));
+            var testCase = GetTestCase("defaultr/firstSample");
 
             var chainrSpec = NewShiftrDefaultrSpec(testCase.Spec);
 
@@ -123,7 +122,7 @@ namespace Jolt.Net.Test
         [Test]
         public void process_itCallsRemover()
         {
-            var testCase = GetTestCase(Path.Combine("json", "removr", "firstSample"));
+            var testCase = GetTestCase("removr/firstSample");
 
             var chainrSpec = NewShiftrRemovrSpec(testCase.Spec);
 
@@ -136,8 +135,8 @@ namespace Jolt.Net.Test
         [Test]
         public void process_itCallsSortr()
         {
-            var input = GetJson(Path.Combine("json", "sortr", "simple", "input"));
-            var expected = GetJson(Path.Combine("json", "sortr", "simple", "output"));
+            var input = GetJson("sortr/simple/input");
+            var expected = GetJson("sortr/simple/output");
             var chainrSpec = NewShiftrSortrSpec(null);
 
             var unit = Chainr.FromSpec(chainrSpec);
@@ -145,27 +144,30 @@ namespace Jolt.Net.Test
 
             actual.Should().BeEquivalentTo(expected);
 
-            // TODO:
-            // String orderErrorMessage = SortrTest.verifyOrder( actual, expected );
-            // Assert.assertNull( orderErrorMessage, orderErrorMessage );
+            String orderErrorMessage = SortrTest.VerifyOrder(actual, expected);
+            orderErrorMessage.Should().BeNull(orderErrorMessage);
         }
 
-#if FALSE
         [Test]
-        public void process_itCallsCustomJavaTransform() 
+        public void process_itCallsCustomTransform() 
         {
-            var spec = newChainrSpec();
+            var spec = NewChainrSpec();
             var delegateSpec = new JObject();
-            spec.add( newCustomJavaActivity( GoodTestTransform.class, delegateSpec ) );
-            Object input = new Object();
+            var transformType = typeof(GoodTestTransform);
+            spec.Add(NewCustomActivity(transformType, delegateSpec));
 
-            Chainr unit = Chainr.fromSpec( spec );
-            TransformTestResult actual = (TransformTestResult) unit.transform( input, null );
+            var transforms = new Dictionary<string, Type>(ChainrEntry.STOCK_TRANSFORMS)
+            {
+                { transformType.Name, transformType }
+            };
+            Chainr unit = Chainr.FromSpec(spec, transforms);
 
-            Assert.assertEquals( input, actual.input );
-            Assert.assertEquals( delegateSpec, actual.spec );
+            var input = new JObject();
+            var actual = unit.Transform(input, null);
+
+            input.Should().BeEquivalentTo(actual["input"]);
+            delegateSpec.Should().BeEquivalentTo(actual["spec"]);
         }
-#endif
 
         static readonly JToken[] SpecExceptionTestCases = new JToken[]
         {
@@ -182,25 +184,19 @@ namespace Jolt.Net.Test
             a.Should().Throw<SpecException>();
         }
 
-#if FALSE
-        static readonly JToken[] FailureTransformTestCases = new JToken[]
+        [TestCase(typeof(ExplodingTestTransform))]
+        public void process_itBlowsUp_fromTransform(Type transformType) 
         {
-            NewCustomJavaChainrSpec( ExplodingTestTransform.class, null )
-        }
-        public Object[][] failureTransformCases() {
-            return new Object[][] {
-                { newCustomJavaChainrSpec( ExplodingTestTransform.class, null ) }
+            var spec = NewCustomChainrSpec(transformType, null);
+            var transforms = new Dictionary<string, Type>(ChainrEntry.STOCK_TRANSFORMS)
+            {
+                { transformType.Name, transformType }
             };
+            Chainr unit = Chainr.FromSpec(spec, transforms);
+            FluentActions
+                .Invoking(() => unit.Transform(new JObject(), null))
+                .Should().Throw<TransformException>();
         }
-
-        @Test(dataProvider = "failureTransformCases", expectedExceptions = TransformException.class)
-        public void process_itBlowsUp_fromTransform(Object spec) {
-            Chainr unit = Chainr.fromSpec( spec );
-            unit.transform( new HashMap(), null );
-            Assert.fail("Should have failed during transform.");
-        }
-#endif
-
 
         [TestCase("andrewkcarter1", false)]
         [TestCase("andrewkcarter2", false)]
@@ -212,8 +208,7 @@ namespace Jolt.Net.Test
         [TestCase("wolfermann2", false)]
         public void RunTestCases(string testCaseName, bool sorted)
         {
-            var testPath = Path.Combine("json", "chainr", "integration", testCaseName);
-            var testCase = GetTestCase(testPath);
+            var testCase = GetTestCase($"chainr/integration/{testCaseName}");
 
             var unit = Chainr.FromSpec(testCase.Spec);
 
@@ -224,13 +219,12 @@ namespace Jolt.Net.Test
 
             actual.Should().BeEquivalentTo(testCase.Expected);
 
-#if FALSE
-            if ( sorted ) {
+            if (sorted) 
+            {
                 // Make sure the sort actually worked.
-                String orderErrorMessage = SortrTest.verifyOrder( actual, expected );
-                Assert.assertNull( orderErrorMessage, orderErrorMessage );
+                var orderErrorMessage = SortrTest.VerifyOrder(actual, testCase.Expected);
+                orderErrorMessage.Should().BeNull(orderErrorMessage);
             }
-#endif
         }
 
         [Test]

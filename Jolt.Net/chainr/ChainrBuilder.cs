@@ -22,6 +22,7 @@ namespace Jolt.Net
     public class ChainrBuilder
     {
         private readonly JToken _chainrSpecObj;
+        protected IReadOnlyDictionary<string, Type> _transforms = null;
         protected IChainrInstantiator _chainrInstantiator = new DefaultChainrInstantiator();
 
         /**
@@ -47,6 +48,12 @@ namespace Jolt.Net
             return this;
         }
 
+        public ChainrBuilder Transforms(IReadOnlyDictionary<string, Type> transforms)
+        {
+            _transforms = transforms ?? throw new ArgumentNullException(nameof(transforms), "ChainRBuilder requires a non-null tranform type map.");
+            return this;
+        }
+
         // public ChainrBuilder WithClassLoader(ClassLoader classLoader) {
         //     if (classLoader == null) {
         //         throw new IllegalArgumentException("ChainrBuilder requires a non-null classLoader.");
@@ -57,7 +64,7 @@ namespace Jolt.Net
 
         public Chainr Build()
         {
-            ChainrSpec chainrSpec = new ChainrSpec(_chainrSpecObj);
+            ChainrSpec chainrSpec = new ChainrSpec(_chainrSpecObj, _transforms);
             var transforms = new List<IJoltTransform>(chainrSpec.GetChainrEntries().Count);
             foreach (ChainrEntry entry in chainrSpec.GetChainrEntries()) 
             {

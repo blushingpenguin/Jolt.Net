@@ -13,80 +13,60 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using FluentAssertions;
+using FluentAssertions.Json;
+using Newtonsoft.Json.Linq;
+using NUnit.Framework;
 using System;
-using System.Collections.Generic;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class ChainrIncrementTest {
+    [Parallelizable(ParallelScope.All)]
+    public class ChainrIncrementTest : JsonTest
+    {
+        [TestCase(0, 1)]
+        [TestCase(0, 3)]
+        [TestCase(1, 3)]
+        [TestCase(1, 4)]
+        public void TestChainrIncrementsFromTo(int start, int end)
+        {
+            var spec = GetJson("chainr/increments/spec");
 
-        @DataProvider
-        public Object[][] fromToTests() {
+            var chainr = Chainr.FromSpec(spec, TestTransforms.Transforms);
 
-            Object chainrSpec = JsonUtils.classpathToObject( "/json/chainr/increments/spec.json" );
+            var expected = GetJson($"chainr/increments/{start}-{end}");
 
-            return new Object[][] {
-                {chainrSpec, 0, 1},
-                {chainrSpec, 0, 3},
-                {chainrSpec, 1, 3},
-                {chainrSpec, 1, 4}
-            };
-        }
+            var actual = chainr.Transform(start, end, (JToken)new JObject());
 
-        @Test( dataProvider = "fromToTests")
-        public void testChainrIncrementsFromTo( Object chainrSpec, int start, int end ) throws IOException {
-            Chainr chainr = Chainr.fromSpec( chainrSpec );
-
-            Object expected = JsonUtils.classpathToObject( "/json/chainr/increments/" + start + "-" + end + ".json" );
-
-            Object actual = chainr.transform( start, end, new HashMap() );
-
-            JoltTestUtil.runDiffy( "failed incremental From-To Chainr", expected, actual );
+            actual.Should().BeEquivalentTo(expected);
         }
 
 
-        @DataProvider
-        public Object[][] toTests() {
+        [TestCase(1)]
+        [TestCase(3)]
+        public void TestChainrIncrementsTo(int end)
+        {
+            var spec = GetJson("chainr/increments/spec");
 
-            Object chainrSpec = JsonUtils.classpathToObject(  "/json/chainr/increments/spec.json" );
+            var chainr = Chainr.FromSpec(spec, TestTransforms.Transforms);
 
-            return new Object[][] {
-                    {chainrSpec, 1},
-                    {chainrSpec, 3}
-            };
+            var expected = GetJson($"chainr/increments/0-{end}");
+
+            var actual = chainr.Transform(end, (JToken)new JObject());
+
+            actual.Should().BeEquivalentTo(expected);
         }
 
-        @Test( dataProvider = "toTests")
-        public void testChainrIncrementsTo( Object chainrSpec, int end  ) throws IOException {
-
-            Chainr chainr = Chainr.fromSpec( chainrSpec );
-
-            Object expected = JsonUtils.classpathToObject( "/json/chainr/increments/0-" + end + ".json" );
-
-            Object actual = chainr.transform( end, new HashMap() );
-
-            JoltTestUtil.runDiffy( "failed incremental To Chainr", expected, actual );
-        }
-
-        @DataProvider
-        public Object[][] failTests() {
-
-            Object chainrSpec = JsonUtils.classpathToObject( "/json/chainr/increments/spec.json" );
-
-            return new Object[][] {
-                    {chainrSpec, 0, 0},
-                    {chainrSpec, -2, 2},
-                    {chainrSpec, 0, -2},
-                    {chainrSpec, 1, 10000}
-            };
-        }
-
-        @Test( dataProvider = "failTests", expectedExceptions = TransformException.class)
-        public void testFails( Object chainrSpec, int start, int end  ) throws IOException {
-            Chainr chainr = Chainr.fromSpec( chainrSpec );
-            chainr.transform( start, end, new HashMap());
+        [TestCase(0, 0)]
+        [TestCase(-2, 2)]
+        [TestCase(0, -2)]
+        [TestCase(1, 10000)]
+        public void TestFails(int start, int end)
+        {
+            var spec = GetJson("chainr/increments/spec");
+            var chainr = Chainr.FromSpec(spec, TestTransforms.Transforms);
+            Action a = () => chainr.Transform(start, end, (JToken)new JObject());
+            a.Should().Throw<TransformException>();
         }
     }
-#endif
 }

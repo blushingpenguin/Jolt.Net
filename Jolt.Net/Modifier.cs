@@ -104,7 +104,7 @@ namespace Jolt.Net
             walkedPath.Add(input, rootLpe);
 
             _rootSpec.Apply(ROOT_KEY, input, walkedPath, null, contextWrapper);
-            return contextWrapper[ROOT_KEY];
+            return input;
         }
 
         /**

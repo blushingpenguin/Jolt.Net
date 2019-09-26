@@ -14,63 +14,59 @@
  * limitations under the License.
  */
 
-using FluentAssertions;
+using Jolt.Net.Functions;
+using Jolt.Net.Functions.Lists;
+using Jolt.Net.Functions.Objects;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using NSubstitute;
-using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jolt.Net.Test
 {
-    #if FALSE
-    @SuppressWarnings( "deprecated" )
-    public class ListsTest extends AbstractTester {
+    [Parallelizable(ParallelScope.All)]
+    public class ListsTest : AbstractTester 
+    {
+        public static IEnumerable<TestCaseData> GetTestCases()
+        {
+            var FIRST_ELEMENT = new FirstElement();
+            var LAST_ELEMENT = new LastElement();
+            var ELEMENT_AT = new ElementAt();
 
-        @DataProvider(parallel = true)
-        public Iterator<Object[]> getTestCases() {
-            List<Object[]> testCases = new LinkedList<>(  );
+            var SIZE = new Size();
 
-            Function FIRST_ELEMENT = new Lists.firstElement();
-            Function LAST_ELEMENT = new Lists.lastElement();
-            Function ELEMENT_AT = new Lists.elementAt();
+            object[][] tests = new object[][] {
+                new object[] { "first-empty-array", FIRST_ELEMENT, new JArray(), null },
 
-            Function SIZE = new Objects.size();
+                new object[] { "first-null", FIRST_ELEMENT, null, null },
+                new object[] { "first-array", FIRST_ELEMENT, new JArray(1, 2, 3), new JValue(1) },
 
-            testCases.add( new Object[] {"first-empty-array", FIRST_ELEMENT, new Object[0], Optional.empty() } );
-            testCases.add( new Object[] {"first-empty-list", FIRST_ELEMENT, Arrays.asList(  ), Optional.empty() } );
+                new object[] { "last-empty-array", LAST_ELEMENT, new JArray(), null },
 
-            testCases.add( new Object[] {"first-null", FIRST_ELEMENT, null, Optional.empty() } );
-            testCases.add( new Object[] {"first-array", FIRST_ELEMENT, new Object[]{ 1, 2, 3 }, Optional.of( 1 ) } );
-            testCases.add( new Object[] {"first-list", FIRST_ELEMENT, Arrays.asList( 1, 2, 3 ), Optional.of( 1 ) } );
+                new object[] { "last-null", LAST_ELEMENT, null, null },
+                new object[] { "last-array", LAST_ELEMENT, new JArray(1, 2, 3), new JValue(3) },
 
+                new object[] { "at-empty-array", ELEMENT_AT, new JArray(5), null },
+                new object[] { "at-empty-null", ELEMENT_AT, new JArray(null, 1), null },
+                new object[] { "at-empty-invalid", ELEMENT_AT, new JObject(), null },
 
+                new object[] { "at-array", ELEMENT_AT, new JArray(1, 2, 3, 1), new JValue(3) },
 
-            testCases.add( new Object[] {"last-empty-array", LAST_ELEMENT, new Object[0], Optional.empty() } );
-            testCases.add( new Object[] {"last-empty-list", LAST_ELEMENT, Arrays.asList(  ), Optional.empty() } );
+                new object[] { "at-array-missing", ELEMENT_AT, new JArray(5, 1, 2, 3), null },
 
-            testCases.add( new Object[] {"last-null", LAST_ELEMENT, null, Optional.empty() } );
-            testCases.add( new Object[] {"last-array", LAST_ELEMENT, new Object[]{ 1, 2, 3 }, Optional.of( 3 ) } );
-            testCases.add( new Object[] {"last-list", LAST_ELEMENT, Arrays.asList( 1, 2, 3 ), Optional.of( 3 ) } );
+                new object[] { "size-list", SIZE, new JArray(5, 1, 2, 3), new JValue(4) }
+            };
 
+            foreach (var test in tests)
+            {
+                yield return new TestCaseData(test.Skip(1).ToArray()) { TestName = $"RunTest({test[0]})" };
+            }
+        }
 
-
-            testCases.add( new Object[] {"at-empty-array", ELEMENT_AT, new Object[] {5}, Optional.empty() } );
-            testCases.add( new Object[] {"at-empty-list", ELEMENT_AT, Arrays.asList( 5 ), Optional.empty() } );
-            testCases.add( new Object[] {"at-empty-null", ELEMENT_AT, new Object[] {null, 1}, Optional.empty() } );
-            testCases.add( new Object[] {"at-empty-invalid", ELEMENT_AT, new Object(), Optional.empty() } );
-
-            testCases.add( new Object[] {"at-array", ELEMENT_AT, new Object[]{ 1, 2, 3, 1 }, Optional.of( 3 ) } );
-            testCases.add( new Object[] {"at-list", ELEMENT_AT, Arrays.asList( 1, 2, 3, 1 ), Optional.of( 3 ) } );
-
-            testCases.add( new Object[] {"at-array-missing", ELEMENT_AT, new Object[]{ 5, 1, 2, 3 }, Optional.empty() } );
-            testCases.add( new Object[] {"at-list-missing", ELEMENT_AT, Arrays.asList( 5, 1, 2, 3 ), Optional.empty() } );
-
-
-            testCases.add( new Object[] {"size-list", SIZE, new Object[]{ 5, 1, 2, 3 }, Optional.of(4) } );
-            testCases.add( new Object[] {"size-list-empty", SIZE, Arrays.asList( ), Optional.of(0) } );
-
-            return testCases.iterator();
+        [TestCaseSource(nameof(GetTestCases))]
+        public void RunTest(IFunction function, JToken args, JToken expected)
+        {
+            TestFunction(function, args, expected);
         }
     }
-#endif
 }

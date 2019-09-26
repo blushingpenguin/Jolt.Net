@@ -13,52 +13,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+using FluentAssertions;
+using FluentAssertions.Json;
+using Jolt.Net;
+using Newtonsoft.Json.Linq;
+using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 
 namespace Jolt.Net.Test
 {
-    #if FALSE
-    public class StarRegexPathElementTest {
+    public class StarRegexPathElementTest
+    {
+        [TestCase("rating-*-*",                 "rating-tuna-marlin",                         "tuna",     "marlin",       TestName = "easy star test")]
+        [TestCase("terms--config--*--*--cdv",   "terms--config--Expertise--12345--cdv",       "Expertise", "12345",       TestName = "easy facet usage")]
+        [TestCase("terms--config--*--*--cdv",   "terms--config--Expertise--12345--6789--cdv", "Expertise", "12345--6789", TestName = "degenerate ProductId in facet")]
+        [TestCase("rating.$.*.*",               "rating.$.marlin$.test.",                     "marlin$",   "test.",       TestName = "multi metachar test")]
+        public void StarPatternTest(string spec, string dataKey, string expected1, string expected2)
+        {
+            IStarPathElement star = new StarRegexPathElement(spec);
 
-        @DataProvider
-        public Object[][] getStarPatternTests() {
-            return new Object[][] {
-                    {"easy star test",                "rating-*-*",               "rating-tuna-marlin",                         "tuna",      "marlin"},
-                    {"easy facet usage",              "terms--config--*--*--cdv", "terms--config--Expertise--12345--cdv",       "Expertise", "12345"},
-                    {"degenerate ProductId in facet", "terms--config--*--*--cdv", "terms--config--Expertise--12345--6789--cdv", "Expertise", "12345--6789"},
-                    {"multi metachar test",           "rating.$.*.*",               "rating.$.marlin$.test.",                   "marlin$",   "test."},
-            };
+            MatchedElement lpe = star.Match(dataKey, null);
+
+            lpe.GetSubKeyCount().Should().Be(3);
+            lpe.GetSubKeyRef(0).Should().Be(dataKey);
+            lpe.GetSubKeyRef(1).Should().Be(expected1);
+            lpe.GetSubKeyRef(2).Should().Be(expected2);
         }
 
-        @Test(dataProvider = "getStarPatternTests")
-        public void starPatternTest(String testName, String spec, String dataKey, String expected1, String expected2) {
+        [Test]
+        public void MustMatchSomethingTest() 
+        {
+            IStarPathElement star = new StarRegexPathElement("tuna-*-*");
 
-            StarPathElement star = new StarRegexPathElement(spec);
+            star.Match("tuna--", null).Should().BeNull();
+            star.Match("tuna-bob-", null).Should().BeNull();
+            star.Match("tuna--bob", null).Should().BeNull();
 
-            MatchedElement lpe = star.match(dataKey, null);
+            IStarPathElement multiMetacharStarpathelement = new StarRegexPathElement("rating-$-*-*");
 
-            Assert.assertEquals(3, lpe.getSubKeyCount());
-            Assert.assertEquals(dataKey, lpe.getSubKeyRef(0));
-            Assert.assertEquals(expected1, lpe.getSubKeyRef(1));
-            Assert.assertEquals(expected2, lpe.getSubKeyRef(2));
-        }
-
-        @Test
-        public void mustMatchSomethingTest() {
-
-            StarPathElement star = new StarRegexPathElement("tuna-*-*");
-
-            Assert.assertNull(star.match("tuna--", null));
-            Assert.assertNull(star.match("tuna-bob-", null));
-            Assert.assertNull(star.match("tuna--bob", null));
-
-            StarPathElement multiMetacharStarpathelement = new StarRegexPathElement("rating-$-*-*");
-
-            Assert.assertNull(multiMetacharStarpathelement.match("rating-capGrp1-capGrp2", null));
-            Assert.assertNull(multiMetacharStarpathelement.match("rating-$capGrp1-capGrp2", null));
-            Assert.assertNotNull(multiMetacharStarpathelement.match("rating-$-capGrp1-capGrp2", null));
+            multiMetacharStarpathelement.Match("rating-capGrp1-capGrp2", null).Should().BeNull();
+            multiMetacharStarpathelement.Match("rating-$capGrp1-capGrp2", null).Should().BeNull();
+            multiMetacharStarpathelement.Match("rating-$-capGrp1-capGrp2", null).Should().NotBeNull();
         }
     }
-#endif
 }

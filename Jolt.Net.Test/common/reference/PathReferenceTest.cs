@@ -13,48 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
+using FluentAssertions.Json;
 using NUnit.Framework;
-using NSubstitute;
 using System;
 using System.Collections.Generic;
 
 namespace Jolt.Net.Test
 {
-#if FALSE
-    public class PathReferenceTest {
-
-        @DataProvider
-        public Object[][] getValidReferenceTests() {
-            return new Object[][] {
-                {     "", 0, "0" },
-                {    "3", 3, "3" },
-                {  "12", 12, "12" }
-            };
-        }
-
-        @Test(dataProvider = "getValidReferenceTests")
-        public void validAmpReferencePatternTest(String key, int pathIndex, String canonicalForm) {
-
-            PathReference ref = new HashReference("#" + key);
-            Assert.assertEquals(pathIndex, ref.getPathIndex());
-            Assert.assertEquals("#" + canonicalForm, ref.getCanonicalForm());
+    public class PathReferenceTest 
+    {
+        [TestCase(   "", 0, "0" )]
+        [TestCase(  "3", 3, "3" )]
+        [TestCase("12", 12, "12")]
+        public void ValidAmpReferencePatternTest(string key, int pathIndex, string canonicalForm)
+        {
+            var ref_ = new HashReference("#" + key);
+            ref_.GetPathIndex().Should().Be(pathIndex);
+            ref_.GetCanonicalForm().Should().Be("#" + canonicalForm);
         }
 
 
-        @DataProvider
-        public Object[][] getFailReferenceTests() {
-            return new Object[][] {
-                { "pants" },
-                { "-1" },
-                { "(1)" }
-            };
-        }
-
-        @Test(dataProvider = "getFailReferenceTests", expectedExceptions = SpecException.class  )
-        public void failAmpReferencePatternTest(String key) {
-            new HashReference("#" + key);
+        [TestCase("pants")]
+        [TestCase("-1")]
+        [TestCase("(1)")]
+        public void FailAmpReferencePatternTest(string key)
+        {
+            FluentActions
+                .Invoking(() => new HashReference("#" + key))
+                .Should().Throw<SpecException>();
         }
     }
-#endif
 }

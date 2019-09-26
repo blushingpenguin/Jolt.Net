@@ -118,12 +118,13 @@ namespace Jolt.Net
         public override bool IsApplicable(JObject source, string key)
         {
             return base.IsApplicable(source, key) &&
-                (!source.TryGetValue(key, out var value) || value == null);
+                (!source.TryGetValue(key, out var value) || value == null || value.Type == JTokenType.Null);
         }
 
         public override bool IsApplicable(JArray source, int reqIndex, int origSize)
         {
-            return base.IsApplicable(source, reqIndex, origSize) && source[reqIndex] == null;
+            return base.IsApplicable(source, reqIndex, origSize) && 
+                (source[reqIndex] == null || source[reqIndex].Type == JTokenType.Null);
         }
     }
 
@@ -143,7 +144,7 @@ namespace Jolt.Net
         {
             return base.IsApplicable(source, reqIndex, origSize) &&
                     // only new index contains null
-                    reqIndex >= origSize && source[reqIndex] == null;
+                    reqIndex >= origSize && (source[reqIndex] == null || source[reqIndex].Type == JTokenType.Null);
         }
     };
 }

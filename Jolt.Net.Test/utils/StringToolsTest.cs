@@ -13,94 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 using FluentAssertions;
+using FluentAssertions.Json;
 using NUnit.Framework;
-using NSubstitute;
-using System;
-using System.Collections.Generic;
 
 namespace Jolt.Net.Test
 {
-    #if FALSE
     /**
     * StringTools Tester.
     */
-    public class StringToolsTest {
-
-        @DataProvider (parallel = true)
-        public Iterator<Object[]> testCaseGenerator() {
-            List<Object[]> testCases = Lists.newArrayList();
-
-            testCases.add(new String[] {null, null});
-            testCases.add(new String[] {"", ""});
-
-            testCases.add(new String[] {null, ""});
-            testCases.add(new String[] {"", null});
-
-            testCases.add(new String[] {RandomStringUtils.randomAscii(1<<2), null});
-            testCases.add(new String[] {RandomStringUtils.randomAscii(1<<2), ""});
-
-            testCases.add(new String[] {null, RandomStringUtils.randomAscii(1<<2)});
-            testCases.add(new String[] {"", RandomStringUtils.randomAscii(1<<2)});
-
-
-            int i=1<<6;
-            while(i-- > 0) {
-                testCases.add(new String[] { RandomStringUtils.randomAscii(1<<10), RandomStringUtils.randomAscii(1<<2) });
-                testCases.add(new String[] { RandomStringUtils.randomAscii(1<<2), RandomStringUtils.randomAscii(1<<10) });
-
-                testCases.add(new String[] { RandomStringUtils.randomAlphabetic(1<<10), RandomStringUtils.randomAlphabetic(1<<2) });
-                testCases.add(new String[] { RandomStringUtils.randomAlphabetic(1<<2), RandomStringUtils.randomAlphabetic(1<<10) });
-
-                testCases.add(new String[] { RandomStringUtils.randomAlphanumeric(1<<10), RandomStringUtils.randomAlphanumeric(1<<2) });
-                testCases.add(new String[] { RandomStringUtils.randomAlphanumeric(1<<2), RandomStringUtils.randomAlphanumeric(1<<10) });
-            }
-
-            return testCases.iterator();
+    [Parallelizable(ParallelScope.All)]
+    public class StringToolsTest
+    {
+        [TestCase(null, null, 0)]
+        [TestCase(null, "", 0)]
+        [TestCase("", null, 0)]
+        [TestCase("", "", 0)]
+        [TestCase("foofoofoo", "oo", 3)]
+        [TestCase("foofoofoo", "o", 6)]
+        [TestCase("foofoofoo", "f", 3)]
+        [TestCase("barlocksbarlocksbarlocks", "bax", 0)]
+        public void CountMatches(string str, string subStr, int result)
+        {
+            StringTools.CountMatches(str, subStr).Should().Be(result);
         }
-
-        @Test(dataProvider = "testCaseGenerator")
-        public void testCountMatches(String str, String subStr) throws Exception {
-
-            Assert.assertEquals(
-                    StringTools.countMatches(str, subStr),
-                    StringTools.countMatches(str, subStr),
-                    "test failed: \nstr=\"" + str + "\"\nsubStr=\"" + subStr + "\""
-            );
-        }
-
-        @Test
-        public void testIsNotBlank() throws Exception {
-            Assert.assertTrue(StringTools.isNotBlank(" a a "));
-            Assert.assertTrue(StringTools.isNotBlank("a a"));
-            Assert.assertTrue(StringTools.isNotBlank(" a "));
-            Assert.assertTrue(StringTools.isNotBlank("a"));
-
-            Assert.assertFalse(StringTools.isNotBlank("  "));
-            Assert.assertFalse(StringTools.isNotBlank(" "));
-            Assert.assertFalse(StringTools.isNotBlank(""));
-            Assert.assertFalse(StringTools.isNotBlank(null));
-        }
-
-        @Test
-        public void testIsBlank() throws Exception {
-            Assert.assertFalse(StringTools.isBlank(" a a "));
-            Assert.assertFalse(StringTools.isBlank("a a"));
-            Assert.assertFalse(StringTools.isBlank(" a "));
-            Assert.assertFalse(StringTools.isBlank("a"));
-
-            Assert.assertTrue(StringTools.isBlank("  "));
-            Assert.assertTrue(StringTools.isBlank(" "));
-            Assert.assertTrue(StringTools.isBlank(""));
-            Assert.assertTrue(StringTools.isBlank(null));
-        }
-
-        @Test
-        public void testIsEmpty() throws Exception {
-            Assert.assertTrue(StringTools.isEmpty(""));
-            Assert.assertTrue(StringTools.isEmpty(null));
-            Assert.assertFalse(StringTools.isEmpty(" "));
-        }
-    } 
-#endif
+    }
 }
