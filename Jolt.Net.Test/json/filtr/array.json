@@ -1,0 +1,13 @@
+{
+    "input": {
+        "states": [ "Alabama", "Alaska", "Arizona", "Arkansas" ]
+    },
+
+    "spec": {
+        "states.*": { "*": "Ar+" }
+    },
+
+    "expected": {
+        "states": [ "Arizona", "Arkansas" ]
+    }
+}

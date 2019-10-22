@@ -23,16 +23,16 @@ namespace Jolt.Net
     /**
      * Non-greedy * based Path Element.
      */
-    public class StarRegexPathElement : BasePathElement, IStarPathElement {
+    public class StarRegexPathElement : BasePathElement, IStarPathElement
+	{
 
         private readonly Regex _pattern;
 
-    public StarRegexPathElement(string key) :
+		public StarRegexPathElement(string key) :
             base(key)
         {
             _pattern = MakePattern(key);
         }
-
 
         private static Regex MakePattern(string key)
         {

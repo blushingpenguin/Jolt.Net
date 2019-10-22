@@ -36,7 +36,7 @@ namespace Jolt.Net
         }
 
         // Ex Keys :  *, cdv-*, *-$de
-        public static IPathElement Parse(string key)
+        public static IMatchablePathElement Parse(string key)
         {
             if ("*" == key)
             {

@@ -1,0 +1,56 @@
+{
+    "input": {
+        "top": [
+            {
+                "level": [
+                    {
+                        "thing": "yes",
+                        "id": 1
+                    },
+                    {
+                        "thing": "no",
+                        "id": 2
+                    }
+                ],
+            },
+            {
+                "level": [
+                    {
+                        "thing": "yes",
+                        "id": 3
+                    },
+                    {
+                        "thing": "no",
+                        "id": 4
+                    }
+                ]
+            }
+        ]
+    },
+    "spec": {
+        "top.*.level.*": { 
+            "thing": "yes"
+        }
+    },
+
+    "expected": {
+        "top": [
+            {
+                "level": [
+                    {
+                        "thing": "yes",
+                        "id": 1
+                    }
+                ]
+            },
+            {
+                "level": [
+                    {
+                        "thing": "yes",
+                        "id": 3
+                    }
+                ]
+            }
+        ]
+    }
+}

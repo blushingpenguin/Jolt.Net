@@ -1,0 +1,16 @@
+{
+    "input": {
+        "groups": [
+            [ "Alabama", "Alaska", "Arizona", "Arkansas" ],
+            [ "Colorado", "Texas" ]
+        ]
+    },
+
+    "spec": {
+        "groups.*": { "1": "Alaska" }
+    },
+
+    "expected": {
+        "groups": [ [ "Alabama", "Alaska", "Arizona", "Arkansas" ] ]
+    }
+}

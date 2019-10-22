@@ -129,7 +129,8 @@ namespace Jolt.Net
             {
                 // loop until we find a comma or end of string
                 StringBuilder sb = new StringBuilder().Append(first);
-                for (int index = 1; index < meat.Length; index++) {
+                for (int index = 1; index < meat.Length; index++) 
+                {
                     char c = meat[index];
 
                     // when we find a / the first comma, stop looking for integers, and just assume the rest is a string path
