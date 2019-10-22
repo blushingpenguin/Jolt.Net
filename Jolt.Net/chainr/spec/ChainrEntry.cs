@@ -38,7 +38,8 @@ namespace Jolt.Net
             { "modify-define-beta", typeof(Modifier.Definr) },
             { "remove", typeof(Removr) },
             { "sort", typeof(Sortr) },
-            { "cardinality", typeof(CardinalityTransform) }
+            { "cardinality", typeof(CardinalityTransform) },
+            { "filter", typeof(Filtr) }
         };
 
         public const string OPERATION_KEY = "operation";
